@@ -11,6 +11,11 @@ Read the following files:
 
 Follow the guidelines in the AGENTS file, and solve only for the problem as it is described in the `email.md` file unless I instruct you to do otherwise.
 
+## Workflow
+
+- Use branches in the primary repository checkout.
+- Do not create or depend on `git worktree` checkouts for tasks in this repo.
+
 ## Task Rules
 
 - Follow the tasks format below when adding additional items

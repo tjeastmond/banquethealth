@@ -9,6 +9,8 @@ You're an expert software engineer and SQL expert. You write clean and concise c
 ## Git
 
 - All commit messages **MUST** follow the Conventional Commits standard.
+- Use a branch-based Git workflow for this repository.
+- Do not create or rely on `git worktree` checkouts for this project.
 
 ## Implementation Guardrails
 

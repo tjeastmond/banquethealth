@@ -61,7 +61,7 @@ You can connect via a GUI tool such as PgAdmin using the following configuration
 - User: postgres
 - Password: local
 
-A simple test framework has also been provided. Tests reset the database state before each run.
+A simple test framework has also been provided. Tests reset the database state before each run by truncating the seeded tables and reseeding from the CSV files in `prisma/seed/rawData`.
 - Run tests with: npm run test
 - See test/database.spec.ts for a sample test
 - Raw CSV seed data is available in prisma/seed/rawData
@@ -99,6 +99,9 @@ npm run db-clean
 npm run init-db
 
 #### Reset Database to base state
+
+This reset flow truncates the seeded tables and reloads the baseline data from the CSV seed files. `npm run test` uses the same CSV-based reset path before each test.
+
 npm run reset-db
 
 #### Run tests

@@ -59,10 +59,13 @@ Follow the guidelines in the AGENTS file, and solve only for the problem as it i
 
 ## Verification
 
-- [ ] Simplify the test database workflow by removing unused snapshot regeneration from Jest global setup
-- [ ] Decide whether to delete `prisma/seed/rawData/snapshot.sql` entirely or keep snapshot tooling only for manual DB restore/debug flows
-- [ ] Update test setup so `npm run test` only resets via truncate + CSV reseed, without rewriting tracked snapshot artifacts
-- [ ] Document the intended test DB lifecycle so future changes do not reintroduce redundant snapshot generation
+- [x] Simplify the test database workflow by removing unused snapshot regeneration from Jest global setup
+- [x] Delete `prisma/seed/rawData/snapshot.sql` and remove unused snapshot tooling entirely
+- [x] Update test setup so `npm run test` only resets via truncate + CSV reseed, without rewriting tracked snapshot artifacts
+- [x] Document the intended test DB lifecycle so future changes do not reintroduce redundant snapshot generation
+
+## Finalize
+
 - [ ] Document final tradeoffs and assumptions for the submitted MVP
 - [x] Run `npm run test`
 - [x] Run `npm start`

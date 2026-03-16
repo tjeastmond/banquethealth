@@ -3,6 +3,7 @@ import { MealTime } from "@prisma/client";
 /** Meal times the smart order system is responsible for scheduling. */
 export const SCHEDULED_MEAL_TIMES = [MealTime.BREAKFAST, MealTime.LUNCH, MealTime.DINNER] as const;
 
+/** Type alias for the meal times the smart order system is responsible for scheduling. */
 export type ScheduledMealTime = (typeof SCHEDULED_MEAL_TIMES)[number];
 
 /**

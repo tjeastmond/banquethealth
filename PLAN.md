@@ -27,15 +27,15 @@ Follow the guidelines in the AGENTS file, and solve only for the problem as it i
 
 ## Database
 
-- [ ] Write query for selecting patients that don't have three scheduled meals for the day
-- [ ] Write query to select entrees, sides, and beverages
-- [ ] Define date boundaries for a smart-order run (`scheduled_for` within the target day)
-- [ ] Write query to fetch existing tray orders for Breakfast, Lunch, and Dinner per patient for a target date
-- [ ] Write query to calculate calories already consumed earlier in the day per patient
-- [ ] Write query to fetch each patient's calorie range from `patient_diet_orders` + `diet_orders`
 - [x] Review Prisma config
 - [x] Upgrade local Prisma to the newest version and update config
 - [x] Review database schema at `./prisma/schema.prisma` and add any indexes that would improve performance
+- [x] Write query for selecting patients that don't have three scheduled meals for the day
+- [x] Write query to select entrees, sides, and beverages
+- [x] Define date boundaries for a smart-order run (`scheduled_for` within the target day)
+- [x] Write query to fetch existing tray orders for Breakfast, Lunch, and Dinner per patient for a target date
+- [x] Write query to calculate calories already consumed earlier in the day per patient
+- [x] Write query to fetch each patient's calorie range from `patient_diet_orders` + `diet_orders`
 
 ## Code
 

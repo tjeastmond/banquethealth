@@ -14,6 +14,7 @@ model DietOrder {
   name String
   minimumCalories Int? @map("minimum_calories")
   maximumCalories Int? @map("maximum_calories")
+  isActive Boolean @default(true) @map("is_active")
   patientDietOrders PatientDietOrder[]
 
   @@map("diet_orders")

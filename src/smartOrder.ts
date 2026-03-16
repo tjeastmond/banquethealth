@@ -10,6 +10,12 @@ const MEAL_TIME_HOURS: Record<ScheduledMealTime, number> = {
   DINNER: 18,
 };
 
+/**
+ * Builds and inserts any missing scheduled tray orders for the target day.
+ *
+ * @param targetDate Day to process. Defaults to the current date.
+ * @returns {Promise<void>} Resolves when all missing tray orders have been planned and inserted.
+ */
 export const triggerSmartOrderSystem = async (targetDate: Date = new Date()): Promise<void> => {
   const patientMealGaps = await getPatientMealGapsForDate(targetDate);
 
@@ -47,6 +53,7 @@ export const triggerSmartOrderSystem = async (targetDate: Date = new Date()): Pr
   }
 };
 
+/** Creates planned tray orders inside a transaction while rechecking for same-day duplicates. */
 async function createMissingTrayOrders(targetDate: Date, patientMealGap: PatientMealGaps, plannedMeals: PlannedMeal[]): Promise<void> {
   const trayOrders = plannedMeals.map((meal) => ({
     patientId: patientMealGap.patientId,
@@ -88,6 +95,7 @@ async function createMissingTrayOrders(targetDate: Date, patientMealGap: Patient
   );
 }
 
+/** Checks whether the patient already has a tray order for the same meal slot on the target day. */
 async function hasExistingScheduledMeal(tx: Prisma.TransactionClient, targetDate: Date, patientId: string, mealTime: ScheduledMealTime): Promise<boolean> {
   const { start, end } = getDateBoundaries(targetDate);
 
@@ -105,6 +113,7 @@ async function hasExistingScheduledMeal(tx: Prisma.TransactionClient, targetDate
   return count > 0;
 }
 
+/** Converts a target day and meal slot into the UTC timestamp used for scheduling that tray. */
 function getScheduledMealTime(targetDate: Date, mealTime: ScheduledMealTime): Date {
   return new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), MEAL_TIME_HOURS[mealTime], 0, 0, 0));
 }

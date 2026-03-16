@@ -29,6 +29,12 @@ interface MealCalorieTarget {
   maximumCalories: number | null;
 }
 
+/**
+ * Loads meal options and fails fast if any required category is unavailable.
+ *
+ * @returns {Promise<FoodOptions>} Available smart-order recipe options grouped by category.
+ * @throws {Error} When any required meal category has no recipes.
+ */
 export async function getSmartOrderFoodOptions(): Promise<FoodOptions> {
   const options = await getFoodOptions();
 
@@ -39,6 +45,13 @@ export async function getSmartOrderFoodOptions(): Promise<FoodOptions> {
   return options;
 }
 
+/**
+ * Plans one meal per missing slot while tracking calories already scheduled for the day.
+ *
+ * @param input Patient calorie constraints, existing scheduled calories, and missing meal slots.
+ * @param options Available recipe options grouped by category.
+ * @returns {PlannedMeal[]} Planned meals ordered to match the input missing meal times.
+ */
 export function buildMealsForPatient(input: PatientMealPlanInput, options: FoodOptions): PlannedMeal[] {
   let scheduledCalories = input.scheduledCalories;
   const plannedMeals: PlannedMeal[] = [];
@@ -66,6 +79,7 @@ export function buildMealsForPatient(input: PatientMealPlanInput, options: FoodO
   return plannedMeals;
 }
 
+/** Splits remaining calorie goals across the remaining meals still to be planned. */
 function getMealCalorieTarget(goals: PatientCalorieGoals, scheduledCalories: number, remainingMealCount: number): MealCalorieTarget {
   const remainingMinimumCalories = Math.max(0, (goals.minimumCalories ?? 0) - scheduledCalories);
   const remainingMaximumCalories = goals.maximumCalories === null ? null : Math.max(0, goals.maximumCalories - scheduledCalories);
@@ -80,6 +94,7 @@ function getMealCalorieTarget(goals: PatientCalorieGoals, scheduledCalories: num
   };
 }
 
+/** Picks the best available meal combination for a meal slot and calorie target. */
 function selectMealForTarget(mealTime: ScheduledMealTime, target: MealCalorieTarget, options: FoodOptions): PlannedMeal | null {
   const candidates = buildMealCandidates(options).filter((candidate) => isCandidateWithinMaximum(candidate, target));
   const sortedCandidates = [...candidates].sort((left, right) => compareMealCandidates(left, right, target));
@@ -96,6 +111,7 @@ function selectMealForTarget(mealTime: ScheduledMealTime, target: MealCalorieTar
   };
 }
 
+/** Filters out meal combinations that would exceed the patient's remaining maximum calories. */
 function isCandidateWithinMaximum(candidate: MealCandidate, target: MealCalorieTarget): boolean {
   if (target.maximumCalories === null) {
     return true;
@@ -104,6 +120,7 @@ function isCandidateWithinMaximum(candidate: MealCandidate, target: MealCalorieT
   return candidate.totalCalories <= target.maximumCalories;
 }
 
+/** Generates every entree-led meal combination with optional side and beverage add-ons. */
 function buildMealCandidates(options: FoodOptions): MealCandidate[] {
   const candidates: MealCandidate[] = [];
   const optionalSides = [undefined, ...options.sides];
@@ -125,6 +142,7 @@ function buildMealCandidates(options: FoodOptions): MealCandidate[] {
   return candidates;
 }
 
+/** Sorts meal candidates by shortfall risk, target fit, then higher calories as a tiebreaker. */
 function compareMealCandidates(left: MealCandidate, right: MealCandidate, target: MealCalorieTarget): number {
   const leftScore = getMealCandidateScore(left, target);
   const rightScore = getMealCandidateScore(right, target);
@@ -147,6 +165,7 @@ function compareMealCandidates(left: MealCandidate, right: MealCandidate, target
     .localeCompare(right.recipes.map((recipe) => recipe.name).join("|"));
 }
 
+/** Computes the ranking metrics used to compare one meal candidate against the calorie target. */
 function getMealCandidateScore(
   candidate: MealCandidate,
   target: MealCalorieTarget,

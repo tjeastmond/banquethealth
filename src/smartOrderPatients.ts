@@ -11,10 +11,22 @@ export interface PatientMealGaps {
 
 const SCHEDULED_MEAL_ORDER: ReadonlyMap<ScheduledMealTime, number> = new Map(SCHEDULED_MEAL_TIMES.map((mealTime, index) => [mealTime, index]));
 
+/**
+ * Narrows a meal time to the breakfast/lunch/dinner set handled by smart ordering.
+ *
+ * @param mealTime Meal time value to validate.
+ * @returns {mealTime is ScheduledMealTime} True when the meal time is one the smart ordering workflow schedules.
+ */
 export function isScheduledMealTime(mealTime: MealTime): mealTime is ScheduledMealTime {
   return SCHEDULED_MEAL_TIMES.includes(mealTime as ScheduledMealTime);
 }
 
+/**
+ * Groups missing meal rows by patient and sorts each patient's missing meals in service order.
+ *
+ * @param missingMeals Flat list of missing meal rows for a target day.
+ * @returns {PatientMealGaps[]} One entry per patient with ordered missing meal times.
+ */
 export function groupMissingMealsByPatient(missingMeals: PatientMissingMeal[]): PatientMealGaps[] {
   const grouped = new Map<string, PatientMealGaps>();
 
@@ -47,6 +59,12 @@ export function groupMissingMealsByPatient(missingMeals: PatientMissingMeal[]): 
     .sort((left, right) => left.patientName.localeCompare(right.patientName));
 }
 
+/**
+ * Fetches and groups each patient's missing breakfast, lunch, and dinner slots for a day.
+ *
+ * @param targetDate Day to inspect using UTC date boundaries.
+ * @returns {Promise<PatientMealGaps[]>} Patients who are missing one or more scheduled meals on that day.
+ */
 export async function getPatientMealGapsForDate(targetDate: Date): Promise<PatientMealGaps[]> {
   const missingMeals = await getPatientsMissingMealsForDate(targetDate);
   return groupMissingMealsByPatient(missingMeals);

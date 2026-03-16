@@ -49,13 +49,18 @@ interface RecipeRow extends FoodOption {
   category: FoodCategory;
 }
 
+/** Narrows recipe categories to the subset used to build smart-order meal options. */
 function isFoodCategory(category: string): category is FoodCategory {
   return FOOD_CATEGORIES.includes(category as FoodCategory);
 }
 
 /**
- * Date boundaries for a smart-order run: `scheduled_for` is within [start, end)
- * when the run targets a given calendar day. Uses UTC day boundaries.
+ * Computes UTC day boundaries for a smart-order run.
+ *
+ * `scheduled_for` is considered part of the target day when it falls within `[start, end)`.
+ *
+ * @param targetDate Day being evaluated.
+ * @returns {{ start: Date; end: Date }} Inclusive start and exclusive end timestamps for that UTC day.
  */
 export function getDateBoundaries(targetDate: Date): { start: Date; end: Date } {
   const start = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 0, 0, 0, 0));
@@ -66,7 +71,11 @@ export function getDateBoundaries(targetDate: Date): { start: Date; end: Date } 
 
 /**
  * Returns one row per missing scheduled meal slot for the target day.
+ *
  * The dataset is already narrowed to patients with fewer than three scheduled meals.
+ *
+ * @param targetDate Day to inspect using UTC date boundaries.
+ * @returns {Promise<PatientMissingMeal[]>} Missing breakfast, lunch, and dinner slots by patient.
  */
 export async function getPatientsMissingMealsForDate(targetDate: Date): Promise<PatientMissingMeal[]> {
   const { start, end } = getDateBoundaries(targetDate);
@@ -112,7 +121,11 @@ export async function getPatientsMissingMealsForDate(targetDate: Date): Promise<
   `;
 }
 
-/** Select recipes by category: Entrees, Sides, Beverages. */
+/**
+ * Loads the recipes smart ordering can use and groups them by meal component category.
+ *
+ * @returns {Promise<FoodOptions>} Available entree, side, and beverage options.
+ */
 export async function getFoodOptions(): Promise<FoodOptions> {
   const rows = await db.recipe.findMany({
     where: {
@@ -140,6 +153,10 @@ export async function getFoodOptions(): Promise<FoodOptions> {
 /**
  * Returns existing breakfast/lunch/dinner tray orders for the target day,
  * including the recipe calorie payload needed for meal sizing.
+ *
+ * @param targetDate Day to inspect using UTC date boundaries.
+ * @param patientIds Optional patient filter for the query.
+ * @returns {Promise<TrayOrderWithRecipes[]>} Scheduled tray orders with recipe calories for the target day.
  */
 export async function getExistingTrayOrdersForDate(targetDate: Date, patientIds?: string[]): Promise<TrayOrderWithRecipes[]> {
   const { start, end } = getDateBoundaries(targetDate);
@@ -194,6 +211,10 @@ export async function getExistingTrayOrdersForDate(targetDate: Date, patientIds?
 /**
  * Returns all calories already scheduled for the target day, including snacks.
  * This is the dataset the meal-builder should use to size any missing tray.
+ *
+ * @param targetDate Day to inspect using UTC date boundaries.
+ * @param patientIds Patients whose scheduled calories should be totaled.
+ * @returns {Promise<Map<string, number>>} Map of patient id to total scheduled calories for the day.
  */
 export async function getScheduledCaloriesForDate(targetDate: Date, patientIds: string[]): Promise<Map<string, number>> {
   if (patientIds.length === 0) {
@@ -246,7 +267,12 @@ export async function getScheduledCaloriesForDate(targetDate: Date, patientIds: 
   );
 }
 
-/** Fetch each patient's calorie range from active patient_diet_orders + diet_orders. */
+/**
+ * Fetches each patient's calorie range from their active diet order, if present.
+ *
+ * @param patientIds Patients to resolve calorie constraints for.
+ * @returns {Promise<PatientCalorieRange[]>} Minimum and maximum daily calorie limits by patient.
+ */
 export async function getPatientCalorieRanges(patientIds: string[]): Promise<PatientCalorieRange[]> {
   if (patientIds.length === 0) {
     return [];

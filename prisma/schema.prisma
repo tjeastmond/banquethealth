@@ -1,0 +1,80 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model DietOrder {
+  id String @id @default(uuid())
+  name String
+  minimumCalories Int? @map("minimum_calories")
+  maximumCalories Int? @map("maximum_calories")
+  patientDietOrders PatientDietOrder[]
+
+  @@map("diet_orders")
+}
+
+model PatientDietOrder {
+  id String @id @default(uuid())
+  patient Patient @relation(fields: [patientId], references: [id])
+  patientId String @map("patient_id")
+  dietOrder DietOrder @relation(fields: [dietOrderId], references: [id])
+  dietOrderId String @map("diet_order_id")
+
+  @@index([patientId])
+  @@index([dietOrderId])
+  @@map("patient_diet_orders")
+}
+
+model Patient {
+  id String @id @default(uuid())
+  name String
+  trayOrders TrayOrder[]
+  patientDietOrders PatientDietOrder[]
+
+  @@map("patients")
+}
+
+model Recipe {
+  id               String            @id @default(uuid())
+  name             String
+  category         String          @map("category")
+  calories         Int             @map("calories")
+  trayOrderRecipes TrayOrderRecipe[]
+
+  @@map("recipes")
+}
+
+enum MealTime {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+model TrayOrder {
+  id           String            @id @default(uuid())
+  scheduledFor DateTime          @default(now()) @map("scheduled_for")
+  mealTime     MealTime          @default(BREAKFAST) @map("meal_time")
+  recipes      TrayOrderRecipe[]
+  patient      Patient           @relation(fields: [patientId], references: [id])
+  patientId    String            @map("patient_id")
+
+  @@index([patientId, scheduledFor, mealTime])
+  @@map("tray_orders")
+}
+
+model TrayOrderRecipe {
+  id          String    @id @default(uuid())
+  recipe      Recipe    @relation(fields: [recipeId], references: [id])
+  recipeId    String    @map("recipe_id")
+  trayOrder   TrayOrder @relation(fields: [trayOrderId], references: [id])
+  trayOrderId String    @map("tray_order_id")
+
+    @@map("tray_order_recipes")
+}

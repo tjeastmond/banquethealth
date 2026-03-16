@@ -39,26 +39,26 @@ Follow the guidelines in the AGENTS file, and solve only for the problem as it i
 
 ## Code
 
-- [ ] Implement a function for fetching patients missing one of three scheduled meals for the date
-- [ ] Implement a function for fetching food options (recipes)
-- [ ] Implement meal-time gap detection that excludes `SNACK`
-- [ ] Implement calorie-aware meal construction for each missing meal slot
-- [ ] Implement duplicate protection so reruns do not create duplicate tray orders
-- [ ] Implement transactional creation of `tray_orders` and `tray_order_recipes`
-- [ ] Implement `triggerSmartOrderSystem` orchestration with small typed helper functions
 - [ ] Add concise run logging (patients processed, meals created, meals skipped)
+- [x] Implement a function for fetching patients missing one of three scheduled meals for the date
+- [x] Implement a function for fetching food options (recipes)
+- [x] Implement meal-time gap detection that excludes `SNACK`
+- [x] Implement calorie-aware meal construction for each missing meal slot
+- [x] Implement duplicate protection so reruns do not create duplicate tray orders
+- [x] Implement transactional creation of `tray_orders` and `tray_order_recipes`
+- [x] Implement `triggerSmartOrderSystem` orchestration with small typed helper functions
 
 ## Tests
 
-- [ ] Add `test/smartOrder.spec.ts` for core smart ordering behavior
-- [ ] Test that missing Breakfast/Lunch/Dinner meals are created for a patient
-- [ ] Test that existing meals are not duplicated
-- [ ] Test that `SNACK` is never auto-ordered
-- [ ] Test that daily calorie handling accounts for calories already consumed earlier in the day
-- [ ] Test idempotency by running `triggerSmartOrderSystem` twice
+- [x] Add `test/smartOrder.spec.ts` for core smart ordering behavior
+- [x] Test that missing Breakfast/Lunch/Dinner meals are created for a patient
+- [x] Test that existing meals are not duplicated
+- [x] Test that `SNACK` is never auto-ordered
+- [x] Test that daily calorie handling accounts for calories already consumed earlier in the day
+- [x] Test idempotency by running `triggerSmartOrderSystem` twice
 
 ## Verification
 
-- [ ] Run `npm run test`
-- [ ] Run `npm start`
 - [ ] Document final tradeoffs and assumptions for the submitted MVP
+- [x] Run `npm run test`
+- [x] Run `npm start`

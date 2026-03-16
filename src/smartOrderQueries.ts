@@ -1,6 +1,6 @@
 import { MealTime, Prisma } from "@prisma/client";
 import { db } from "./db";
-import { getDateBoundaries, SCHEDULED_MEAL_TIMES, type ScheduledMealTime } from "./smartOrderShared";
+import { getDateBoundaries, SCHEDULED_MEAL_TIMES, type NamedPatient, type PatientCalorieGoals, type PatientIdentity, type ScheduledMealTime } from "./smartOrderShared";
 
 export interface FoodOption {
   id: string;
@@ -22,21 +22,10 @@ export interface TrayOrderWithRecipes {
   recipes: { recipeId: string; calories: number }[];
 }
 
-export interface PatientCalorieRange {
-  patientId: string;
-  minimumCalories: number | null;
-  maximumCalories: number | null;
-}
+export interface PatientCalorieRange extends PatientIdentity, PatientCalorieGoals {}
 
-export interface PatientMissingMeal {
-  patientId: string;
-  patientName: string;
+export interface PatientMissingMeal extends NamedPatient {
   missingMealTime: ScheduledMealTime;
-}
-
-export interface PatientScheduledCalories {
-  patientId: string;
-  scheduledCalories: number;
 }
 
 const FOOD_CATEGORIES = ["Entrees", "Sides", "Beverages"] as const;

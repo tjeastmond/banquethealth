@@ -1,14 +1,9 @@
 import type { FoodOption, FoodOptions } from "./smartOrderQueries";
 import { getFoodOptions } from "./smartOrderQueries";
-import { SCHEDULED_MEAL_TIMES, type ScheduledMealTime } from "./smartOrderShared";
+import { SCHEDULED_MEAL_TIMES, type PatientCalorieGoals, type ScheduledMealTime } from "./smartOrderShared";
 
 /** Maps meal times to their available food options grouped by category. */
 export type MealScopedFoodOptions = Record<ScheduledMealTime, FoodOptions>;
-
-export interface PatientCalorieGoals {
-  minimumCalories: number | null;
-  maximumCalories: number | null;
-}
 
 export interface PlannedMeal {
   mealTime: ScheduledMealTime;

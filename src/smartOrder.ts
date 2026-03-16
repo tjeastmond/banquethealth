@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "./db";
 import { buildMealsForPatient, getSmartOrderFoodOptions, type PlannedMeal, type PlannedMealOutcome, type SkippedMealReason } from "./smartOrderMealBuilder";
 import { getPatientCalorieRanges, getPatientsMissingMealsForDate, getScheduledCaloriesForDate, type PatientMissingMeal } from "./smartOrderQueries";
-import { getDateBoundaries, SCHEDULED_MEAL_TIMES, type ScheduledMealTime } from "./smartOrderShared";
+import { getDateBoundaries, SCHEDULED_MEAL_TIMES, type NamedPatient, type ScheduledMealTime } from "./smartOrderShared";
 
 const MEAL_TIME_HOURS: Record<ScheduledMealTime, number> = {
   BREAKFAST: 8,
@@ -10,9 +10,7 @@ const MEAL_TIME_HOURS: Record<ScheduledMealTime, number> = {
   DINNER: 18,
 };
 
-export interface PatientMealResult {
-  patientId: string;
-  patientName: string;
+export interface PatientMealResult extends NamedPatient {
   outcomes: PlannedMealOutcome[];
 }
 
@@ -28,9 +26,7 @@ const EMPTY_SKIPPED_BY_REASON: Record<SkippedMealReason, number> = {
   max_calories_exceeded: 0,
 };
 
-interface PatientMealGaps {
-  patientId: string;
-  patientName: string;
+interface PatientMealGaps extends NamedPatient {
   missingMealTimes: ScheduledMealTime[];
 }
 

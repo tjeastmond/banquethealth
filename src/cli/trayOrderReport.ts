@@ -1,24 +1,20 @@
 import { db } from "../db";
 import { getPatientCalorieRanges, getScheduledCaloriesForDate } from "../smartOrderQueries";
-import { getDateBoundaries, SCHEDULED_MEAL_TIMES } from "../smartOrderShared";
+import { getDateBoundaries, SCHEDULED_MEAL_TIMES, type NamedPatient, type PatientCalorieGoals, type ScheduledMealTime } from "../smartOrderShared";
 
 export interface ReportMeal {
-  mealTime: (typeof SCHEDULED_MEAL_TIMES)[number];
+  mealTime: ScheduledMealTime;
   recipeNames: string[];
   totalCalories: number;
 }
 
-export interface PatientTrayOrderReportRow {
-  patientId: string;
-  patientName: string;
-  meals: Partial<Record<(typeof SCHEDULED_MEAL_TIMES)[number], ReportMeal>>;
+export interface PatientTrayOrderReportRow extends NamedPatient, PatientCalorieGoals {
+  meals: Partial<Record<ScheduledMealTime, ReportMeal>>;
   dietPlanName: string | null;
-  minimumCalories: number | null;
-  maximumCalories: number | null;
   totalPlannedCalories: number;
 }
 
-const MEAL_TIME_LABELS: Record<(typeof SCHEDULED_MEAL_TIMES)[number], string> = {
+const MEAL_TIME_LABELS: Record<ScheduledMealTime, string> = {
   BREAKFAST: "Breakfast",
   LUNCH: "Lunch",
   DINNER: "Dinner",

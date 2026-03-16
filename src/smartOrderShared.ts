@@ -6,6 +6,22 @@ export const SCHEDULED_MEAL_TIMES = [MealTime.BREAKFAST, MealTime.LUNCH, MealTim
 /** Type alias for the meal times the smart order system is responsible for scheduling. */
 export type ScheduledMealTime = (typeof SCHEDULED_MEAL_TIMES)[number];
 
+/** Common patient identifier payload shared across smart-order modules. */
+export interface PatientIdentity {
+  patientId: string;
+}
+
+/** Patient identifier and display name used by smart-order workflows. */
+export interface NamedPatient extends PatientIdentity {
+  patientName: string;
+}
+
+/** Daily calorie constraint range for a patient. */
+export interface PatientCalorieGoals {
+  minimumCalories: number | null;
+  maximumCalories: number | null;
+}
+
 /**
  * Computes UTC day boundaries for a smart-order run.
  *

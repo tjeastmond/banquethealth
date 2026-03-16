@@ -38,25 +38,6 @@ export interface PatientScheduledCalories {
   scheduledCalories: number;
 }
 
-interface TrayOrderRecipeRow {
-  recipeId: string;
-  calories: number;
-}
-
-interface TrayOrderWithRecipesRow {
-  id: string;
-  mealTime: MealTime;
-  scheduledFor: Date;
-  patientId: string;
-  recipes: TrayOrderRecipeRow[] | null;
-}
-
-interface PatientDietOrderRow {
-  patientId: string;
-  minimumCalories: number | null;
-  maximumCalories: number | null;
-}
-
 /** Meal times the smart order system is responsible for scheduling. */
 export const SCHEDULED_MEAL_TIMES = [MealTime.BREAKFAST, MealTime.LUNCH, MealTime.DINNER] as const;
 
@@ -66,6 +47,10 @@ type FoodCategory = (typeof FOOD_CATEGORIES)[number];
 
 interface RecipeRow extends FoodOption {
   category: FoodCategory;
+}
+
+function isFoodCategory(category: string): category is FoodCategory {
+  return FOOD_CATEGORIES.includes(category as FoodCategory);
 }
 
 /**
@@ -129,21 +114,26 @@ export async function getPatientsMissingMealsForDate(targetDate: Date): Promise<
 
 /** Select recipes by category: Entrees, Sides, Beverages. */
 export async function getFoodOptions(): Promise<FoodOptions> {
-  const rows = await db.$queryRaw<RecipeRow[]>`
-    SELECT
-      id,
-      name,
-      calories,
-      category
-    FROM recipes
-    WHERE category IN (${Prisma.join(FOOD_CATEGORIES)})
-    ORDER BY category, calories DESC, name ASC
-  `;
+  const rows = await db.recipe.findMany({
+    where: {
+      category: {
+        in: [...FOOD_CATEGORIES],
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      calories: true,
+      category: true,
+    },
+    orderBy: [{ category: "asc" }, { calories: "desc" }, { name: "asc" }],
+  });
+  const recipeRows: RecipeRow[] = rows.filter((row): row is RecipeRow => isFoodCategory(row.category));
 
   return {
-    entrees: rows.filter((row) => row.category === "Entrees").map(({ category: _category, ...recipe }) => recipe),
-    sides: rows.filter((row) => row.category === "Sides").map(({ category: _category, ...recipe }) => recipe),
-    beverages: rows.filter((row) => row.category === "Beverages").map(({ category: _category, ...recipe }) => recipe),
+    entrees: recipeRows.filter((row) => row.category === "Entrees").map(({ category: _category, ...recipe }) => recipe),
+    sides: recipeRows.filter((row) => row.category === "Sides").map(({ category: _category, ...recipe }) => recipe),
+    beverages: recipeRows.filter((row) => row.category === "Beverages").map(({ category: _category, ...recipe }) => recipe),
   };
 }
 
@@ -153,42 +143,51 @@ export async function getFoodOptions(): Promise<FoodOptions> {
  */
 export async function getExistingTrayOrdersForDate(targetDate: Date, patientIds?: string[]): Promise<TrayOrderWithRecipes[]> {
   const { start, end } = getDateBoundaries(targetDate);
-  const patientFilter = patientIds?.length ? Prisma.sql`AND t.patient_id IN (${Prisma.join(patientIds)})` : Prisma.empty;
-
-  const rows = await db.$queryRaw<TrayOrderWithRecipesRow[]>(Prisma.sql`
-    SELECT
-      t.id,
-      t.meal_time AS "mealTime",
-      t.scheduled_for AS "scheduledFor",
-      t.patient_id AS "patientId",
-      COALESCE(
-        json_agg(
-          json_build_object(
-            'recipeId', r.id,
-            'calories', r.calories
-          )
-        ) FILTER (WHERE r.id IS NOT NULL),
-        '[]'::json
-      ) AS recipes
-    FROM tray_orders t
-    LEFT JOIN tray_order_recipes tor
-      ON tor.tray_order_id = t.id
-    LEFT JOIN recipes r
-      ON r.id = tor.recipe_id
-    WHERE t.scheduled_for >= ${start}
-      AND t.scheduled_for < ${end}
-      AND t.meal_time IN (${Prisma.join(SCHEDULED_MEAL_TIMES)})
-      ${patientFilter}
-    GROUP BY t.id, t.meal_time, t.scheduled_for, t.patient_id
-    ORDER BY t.patient_id, t.scheduled_for, t.meal_time
-  `);
+  const rows = await db.trayOrder.findMany({
+    where: {
+      scheduledFor: {
+        gte: start,
+        lt: end,
+      },
+      mealTime: {
+        in: [...SCHEDULED_MEAL_TIMES],
+      },
+      ...(patientIds?.length
+        ? {
+            patientId: {
+              in: patientIds,
+            },
+          }
+        : {}),
+    },
+    select: {
+      id: true,
+      mealTime: true,
+      scheduledFor: true,
+      patientId: true,
+      recipes: {
+        select: {
+          recipe: {
+            select: {
+              id: true,
+              calories: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: [{ patientId: "asc" }, { scheduledFor: "asc" }, { mealTime: "asc" }],
+  });
 
   return rows.map((row) => ({
     id: row.id,
     mealTime: row.mealTime,
     scheduledFor: row.scheduledFor,
     patientId: row.patientId,
-    recipes: row.recipes ?? [],
+    recipes: row.recipes.map(({ recipe }) => ({
+      recipeId: recipe.id,
+      calories: recipe.calories,
+    })),
   }));
 }
 
@@ -203,24 +202,48 @@ export async function getScheduledCaloriesForDate(targetDate: Date, patientIds: 
 
   const { start, end } = getDateBoundaries(targetDate);
 
-  const rows = await db.$queryRaw<PatientScheduledCalories[]>`
-    SELECT
-      p.id AS "patientId",
-      COALESCE(SUM(r.calories), 0)::int AS "scheduledCalories"
-    FROM patients p
-    LEFT JOIN tray_orders t
-      ON t.patient_id = p.id
-      AND t.scheduled_for >= ${start}
-      AND t.scheduled_for < ${end}
-    LEFT JOIN tray_order_recipes tor
-      ON tor.tray_order_id = t.id
-    LEFT JOIN recipes r
-      ON r.id = tor.recipe_id
-    WHERE p.id IN (${Prisma.join(patientIds)})
-    GROUP BY p.id
-  `;
+  const rows = await db.patient.findMany({
+    where: {
+      id: {
+        in: patientIds,
+      },
+    },
+    select: {
+      id: true,
+      trayOrders: {
+        where: {
+          scheduledFor: {
+            gte: start,
+            lt: end,
+          },
+        },
+        select: {
+          recipes: {
+            select: {
+              recipe: {
+                select: {
+                  calories: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      id: "asc",
+    },
+  });
 
-  return new Map(rows.map((row) => [row.patientId, row.scheduledCalories]));
+  return new Map(
+    rows.map((row) => [
+      row.id,
+      row.trayOrders.reduce(
+        (patientTotal, trayOrder) => patientTotal + trayOrder.recipes.reduce((mealTotal, trayOrderRecipe) => mealTotal + trayOrderRecipe.recipe.calories, 0),
+        0,
+      ),
+    ]),
+  );
 }
 
 /** Fetch each patient's calorie range from active patient_diet_orders + diet_orders. */
@@ -229,20 +252,34 @@ export async function getPatientCalorieRanges(patientIds: string[]): Promise<Pat
     return [];
   }
 
-  const rows = await db.$queryRaw<PatientDietOrderRow[]>`
-    SELECT
-      p.id AS "patientId",
-      d.minimum_calories AS "minimumCalories",
-      d.maximum_calories AS "maximumCalories"
-    FROM patients p
-    LEFT JOIN patient_diet_orders pdo
-      ON pdo.patient_id = p.id
-    LEFT JOIN diet_orders d
-      ON d.id = pdo.diet_order_id
-      AND d.is_active = true
-    WHERE p.id IN (${Prisma.join(patientIds)})
-    ORDER BY p.id, d.id
-  `;
+  const rows = await db.patient.findMany({
+    where: {
+      id: {
+        in: patientIds,
+      },
+    },
+    select: {
+      id: true,
+      patientDietOrders: {
+        select: {
+          dietOrder: {
+            select: {
+              id: true,
+              isActive: true,
+              minimumCalories: true,
+              maximumCalories: true,
+            },
+          },
+        },
+        orderBy: {
+          dietOrderId: "asc",
+        },
+      },
+    },
+    orderBy: {
+      id: "asc",
+    },
+  });
 
   const byPatient = new Map<string, PatientCalorieRange>();
 
@@ -255,14 +292,24 @@ export async function getPatientCalorieRanges(patientIds: string[]): Promise<Pat
   }
 
   for (const row of rows) {
-    if (row.minimumCalories === null && row.maximumCalories === null) {
+    const existing = byPatient.get(row.id);
+
+    if (!existing || existing.minimumCalories !== null || existing.maximumCalories !== null) {
       continue;
     }
 
-    byPatient.set(row.patientId, {
-      patientId: row.patientId,
-      minimumCalories: row.minimumCalories,
-      maximumCalories: row.maximumCalories,
+    const activeDietOrder = row.patientDietOrders
+      .map((patientDietOrder) => patientDietOrder.dietOrder)
+      .find((dietOrder) => dietOrder.isActive && (dietOrder.minimumCalories !== null || dietOrder.maximumCalories !== null));
+
+    if (!activeDietOrder) {
+      continue;
+    }
+
+    byPatient.set(row.id, {
+      patientId: row.id,
+      minimumCalories: activeDietOrder.minimumCalories,
+      maximumCalories: activeDietOrder.maximumCalories,
     });
   }
 

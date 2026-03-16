@@ -4,9 +4,9 @@ import { tables } from "./config";
 import { parseCsv } from "./utils/parse";
 import { getColumnTypes, seedManualTable } from "./utils/db";
 
-export async function seedTablesFromDirectory(dataDirectory: string, tableNames: readonly string[]): Promise<void> {
-  for (const tableName of tableNames) {
-    const filePath = join(dataDirectory, `${tableName}.csv`);
+export async function seedDatabase() {
+  for (const tableName of tables) {
+    const filePath = join(__dirname, "rawData", `./${tableName}.csv`);
     const columnTypes = await getColumnTypes(tableName);
     const rawData = await parseCsv(filePath, columnTypes);
     if (rawData.length === 0) {
@@ -17,10 +17,6 @@ export async function seedTablesFromDirectory(dataDirectory: string, tableNames:
       tableName,
     });
   }
-}
-
-export async function seedDatabase() {
-  await seedTablesFromDirectory(join(__dirname, "rawData"), tables);
 }
 
 if (require.main === module) {

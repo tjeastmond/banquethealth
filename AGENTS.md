@@ -80,3 +80,12 @@ case-challenge/
 │   └── *.spec.ts           # Test specs
 └── scripts/                # DB snapshot utilities
 ```
+
+## Adding Seed Patients
+
+- Add the patient to `prisma/seed/rawData/patients.csv`.
+- Add that patient's diet link to `prisma/seed/rawData/patient_diet_orders.csv`.
+- Add any pre-existing meal schedule rows to `prisma/seed/rawData/tray_orders.csv`.
+- Add matching recipe links for those tray orders to `prisma/seed/rawData/tray_order_recipes.csv`.
+- Reuse the same service date already present in the base seed data unless the task explicitly requires a different date.
+- Do not add one-off tests for every newly seeded patient. The existing seeded coverage for Mark Corrigan, Bob Belcher, and Calvin Fischoeder is sufficient for validating the different meal-state scenarios.

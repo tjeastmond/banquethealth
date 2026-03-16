@@ -7,7 +7,7 @@ describe("database reset", () => {
 
   it("loads the seed data for each test", async () => {
     const trayOrderRecipes = await db.trayOrderRecipe.findMany();
-    expect(trayOrderRecipes.length).toBe(3);
+    expect(trayOrderRecipes.length).toBe(11);
 
     await db.trayOrderRecipe.deleteMany();
 
@@ -17,6 +17,6 @@ describe("database reset", () => {
 
   it("resets the seed data before the next test", async () => {
     const trayOrderRecipes = await db.trayOrderRecipe.findMany();
-    expect(trayOrderRecipes.length).toBe(3);
+    expect(trayOrderRecipes.length).toBe(11);
   });
 });

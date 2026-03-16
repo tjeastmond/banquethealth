@@ -11,6 +11,7 @@ import {
 
 const TARGET_DATE = new Date("2025-08-24T00:00:00.000Z");
 const PATIENT_ID = "7ea4e6ec-f359-485b-ac99-e0b44c3e18b9";
+const BOB_PATIENT_ID = "18ed16cd-39ee-4b41-92f1-460719c21dbc";
 const LOW_CALORIE_DIET_ID = "f5f6e246-0cf6-4eb6-a6f1-fcb894c888ce";
 
 describe("smartOrderQueries", () => {
@@ -25,6 +26,16 @@ describe("smartOrderQueries", () => {
     const missingMeals = await getPatientsMissingMealsForDate(TARGET_DATE);
 
     expect(missingMeals).toEqual([
+      {
+        patientId: BOB_PATIENT_ID,
+        patientName: "Bob Belcher",
+        missingMealTime: MealTime.BREAKFAST,
+      },
+      {
+        patientId: BOB_PATIENT_ID,
+        patientName: "Bob Belcher",
+        missingMealTime: MealTime.LUNCH,
+      },
       {
         patientId: PATIENT_ID,
         patientName: "Mark Corrigan",
@@ -45,7 +56,18 @@ describe("smartOrderQueries", () => {
 
     const missingMeals = await getPatientsMissingMealsForDate(TARGET_DATE);
 
-    expect(missingMeals).toEqual([]);
+    expect(missingMeals).toEqual([
+      {
+        patientId: BOB_PATIENT_ID,
+        patientName: "Bob Belcher",
+        missingMealTime: MealTime.BREAKFAST,
+      },
+      {
+        patientId: BOB_PATIENT_ID,
+        patientName: "Bob Belcher",
+        missingMealTime: MealTime.LUNCH,
+      },
+    ]);
   });
 
   it("returns existing scheduled breakfast lunch and dinner orders with recipe calories", async () => {

@@ -1,6 +1,8 @@
 import triggerSmartOrderSystem from "./smartOrder";
 
-triggerSmartOrderSystem()
+const DEFAULT_SERVICE_DATE = new Date(Date.UTC(2025, 7, 24));
+
+triggerSmartOrderSystem(DEFAULT_SERVICE_DATE)
   .then(() => {
     console.log("Done");
   })

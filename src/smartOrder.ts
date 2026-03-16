@@ -1,8 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { db } from "./db";
 import { buildMealsForPatient, getSmartOrderFoodOptions, type PlannedMeal, type PlannedMealOutcome, type SkippedMealReason } from "./smartOrderMealBuilder";
-import { getPatientMealGapsForDate, type PatientMealGaps, type ScheduledMealTime } from "./smartOrderPatients";
-import { getDateBoundaries, getPatientCalorieRanges, getScheduledCaloriesForDate } from "./smartOrderQueries";
+import { getPatientCalorieRanges, getPatientsMissingMealsForDate, getScheduledCaloriesForDate, type PatientMissingMeal } from "./smartOrderQueries";
+import { getDateBoundaries, SCHEDULED_MEAL_TIMES, type ScheduledMealTime } from "./smartOrderShared";
 
 const MEAL_TIME_HOURS: Record<ScheduledMealTime, number> = {
   BREAKFAST: 8,
@@ -28,6 +28,14 @@ const EMPTY_SKIPPED_BY_REASON: Record<SkippedMealReason, number> = {
   max_calories_exceeded: 0,
 };
 
+interface PatientMealGaps {
+  patientId: string;
+  patientName: string;
+  missingMealTimes: ScheduledMealTime[];
+}
+
+const SCHEDULED_MEAL_ORDER: ReadonlyMap<ScheduledMealTime, number> = new Map(SCHEDULED_MEAL_TIMES.map((mealTime, index) => [mealTime, index]));
+
 /**
  * Builds and inserts any missing scheduled tray orders for the target day.
  *
@@ -35,7 +43,7 @@ const EMPTY_SKIPPED_BY_REASON: Record<SkippedMealReason, number> = {
  * @returns {Promise<SmartOrderRunSummary>} Summary of created and skipped smart-order outcomes.
  */
 export const triggerSmartOrderSystem = async (targetDate: Date = new Date()): Promise<SmartOrderRunSummary> => {
-  const patientMealGaps = await getPatientMealGapsForDate(targetDate);
+  const patientMealGaps = groupMissingMealsByPatient(await getPatientsMissingMealsForDate(targetDate));
   const summary = createEmptyRunSummary();
 
   if (patientMealGaps.length === 0) {
@@ -178,6 +186,34 @@ function logRunSummary(summary: SmartOrderRunSummary): void {
   console.info(
     `[smart-order] patients=${summary.patientsProcessed} created=${summary.mealsCreated} skipped=${summary.mealsSkipped} max_calories_exceeded=${summary.skippedByReason.max_calories_exceeded}`,
   );
+}
+
+function groupMissingMealsByPatient(missingMeals: PatientMissingMeal[]): PatientMealGaps[] {
+  const grouped = new Map<string, PatientMealGaps>();
+
+  for (const missingMeal of missingMeals) {
+    const existing = grouped.get(missingMeal.patientId);
+
+    if (existing) {
+      existing.missingMealTimes.push(missingMeal.missingMealTime);
+      continue;
+    }
+
+    grouped.set(missingMeal.patientId, {
+      patientId: missingMeal.patientId,
+      patientName: missingMeal.patientName,
+      missingMealTimes: [missingMeal.missingMealTime],
+    });
+  }
+
+  return Array.from(grouped.values())
+    .map((patient) => ({
+      ...patient,
+      missingMealTimes: patient.missingMealTimes.sort(
+        (left, right) => (SCHEDULED_MEAL_ORDER.get(left) ?? Number.MAX_SAFE_INTEGER) - (SCHEDULED_MEAL_ORDER.get(right) ?? Number.MAX_SAFE_INTEGER),
+      ),
+    }))
+    .sort((left, right) => left.patientName.localeCompare(right.patientName));
 }
 
 export default triggerSmartOrderSystem;

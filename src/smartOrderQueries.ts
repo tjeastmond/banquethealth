@@ -1,5 +1,6 @@
 import { MealTime, Prisma } from "@prisma/client";
 import { db } from "./db";
+import { getDateBoundaries, SCHEDULED_MEAL_TIMES, type ScheduledMealTime } from "./smartOrderShared";
 
 export interface FoodOption {
   id: string;
@@ -12,8 +13,6 @@ export interface FoodOptions {
   sides: FoodOption[];
   beverages: FoodOption[];
 }
-
-export type MealScopedFoodOptions = Record<(typeof SCHEDULED_MEAL_TIMES)[number], FoodOptions>;
 
 export interface TrayOrderWithRecipes {
   id: string;
@@ -32,16 +31,13 @@ export interface PatientCalorieRange {
 export interface PatientMissingMeal {
   patientId: string;
   patientName: string;
-  missingMealTime: MealTime;
+  missingMealTime: ScheduledMealTime;
 }
 
 export interface PatientScheduledCalories {
   patientId: string;
   scheduledCalories: number;
 }
-
-/** Meal times the smart order system is responsible for scheduling. */
-export const SCHEDULED_MEAL_TIMES = [MealTime.BREAKFAST, MealTime.LUNCH, MealTime.DINNER] as const;
 
 const FOOD_CATEGORIES = ["Entrees", "Sides", "Beverages"] as const;
 
@@ -54,21 +50,6 @@ interface RecipeRow extends FoodOption {
 /** Narrows recipe categories to the subset used to build smart-order meal options. */
 function isFoodCategory(category: string): category is FoodCategory {
   return FOOD_CATEGORIES.includes(category as FoodCategory);
-}
-
-/**
- * Computes UTC day boundaries for a smart-order run.
- *
- * `scheduled_for` is considered part of the target day when it falls within `[start, end)`.
- *
- * @param targetDate Day being evaluated.
- * @returns {{ start: Date; end: Date }} Inclusive start and exclusive end timestamps for that UTC day.
- */
-export function getDateBoundaries(targetDate: Date): { start: Date; end: Date } {
-  const start = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 0, 0, 0, 0));
-  const end = new Date(start);
-  end.setUTCDate(end.getUTCDate() + 1);
-  return { start, end };
 }
 
 /**
@@ -129,7 +110,7 @@ export async function getPatientsMissingMealsForDate(targetDate: Date): Promise<
  * @param mealTime Meal slot being planned.
  * @returns {Promise<FoodOptions>} Available entree, side, and beverage options.
  */
-export async function getFoodOptions(mealTime: (typeof SCHEDULED_MEAL_TIMES)[number]): Promise<FoodOptions> {
+export async function getFoodOptions(mealTime: ScheduledMealTime): Promise<FoodOptions> {
   const rows = await db.recipe.findMany({
     where: {
       category: {

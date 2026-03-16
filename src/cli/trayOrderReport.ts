@@ -1,5 +1,6 @@
 import { db } from "../db";
-import { getDateBoundaries, getPatientCalorieRanges, getScheduledCaloriesForDate, SCHEDULED_MEAL_TIMES } from "../smartOrderQueries";
+import { getPatientCalorieRanges, getScheduledCaloriesForDate } from "../smartOrderQueries";
+import { getDateBoundaries, SCHEDULED_MEAL_TIMES } from "../smartOrderShared";
 
 export interface ReportMeal {
   mealTime: (typeof SCHEDULED_MEAL_TIMES)[number];

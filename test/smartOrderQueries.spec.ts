@@ -1,13 +1,7 @@
 import { MealTime } from "@prisma/client";
 import { db } from "../src/db";
-import {
-  getDateBoundaries,
-  getExistingTrayOrdersForDate,
-  getFoodOptions,
-  getPatientCalorieRanges,
-  getPatientsMissingMealsForDate,
-  getScheduledCaloriesForDate,
-} from "../src/smartOrderQueries";
+import { getDateBoundaries } from "../src/smartOrderShared";
+import { getExistingTrayOrdersForDate, getFoodOptions, getPatientCalorieRanges, getPatientsMissingMealsForDate, getScheduledCaloriesForDate } from "../src/smartOrderQueries";
 
 const TARGET_DATE = new Date("2025-08-24T00:00:00.000Z");
 const PATIENT_ID = "7ea4e6ec-f359-485b-ac99-e0b44c3e18b9";

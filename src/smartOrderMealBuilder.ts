@@ -55,6 +55,10 @@ export async function getSmartOrderFoodOptions(): Promise<MealScopedFoodOptions>
         throw new Error(`Smart order requires at least one entree option for ${mealTime.toLowerCase()}`);
       }
 
+      if (options.beverages.length === 0) {
+        throw new Error(`Smart order requires at least one beverage option for ${mealTime.toLowerCase()}`);
+      }
+
       return [mealTime, options] as const;
     }),
   );
@@ -149,11 +153,10 @@ function isCandidateWithinMaximum(candidate: MealCandidate, target: MealCalorieT
 function buildMealCandidates(options: FoodOptions): MealCandidate[] {
   const candidates: MealCandidate[] = [];
   const optionalSides = [undefined, ...options.sides];
-  const optionalBeverages = [undefined, ...options.beverages];
 
   for (const entree of options.entrees) {
     for (const side of optionalSides) {
-      for (const beverage of optionalBeverages) {
+      for (const beverage of options.beverages) {
         const recipes = [entree, side, beverage].filter((recipe): recipe is FoodOption => recipe !== undefined);
 
         candidates.push({

@@ -34,6 +34,7 @@ describe("triggerSmartOrderSystem", () => {
     expect(trayOrders.map((order) => order.mealTime)).toEqual([MealTime.BREAKFAST, MealTime.LUNCH, MealTime.DINNER]);
     expect(trayOrders.every((order) => order.mealTime !== MealTime.SNACK)).toBe(true);
     expect(trayOrders.every((order) => order.recipes.length > 0)).toBe(true);
+    expect(trayOrders.every((order) => order.recipes.some(({ recipe }) => recipe.category === "Beverages"))).toBe(true);
     expect(trayOrders[0]?.recipes.some(({ recipe }) => recipe.name === "Salmon")).toBe(false);
     expect(trayOrders[0]?.recipes.some(({ recipe }) => recipe.name === "Pancakes")).toBe(true);
     expect(trayOrders[1]?.recipes.some(({ recipe }) => recipe.name === "Pancakes")).toBe(false);
@@ -295,6 +296,100 @@ describe("triggerSmartOrderSystem", () => {
     expect(patientResult!.outcomes[1].meal.totalCalories).toBeLessThanOrEqual(450);
   });
 
+  it("defaults to water when no higher-calorie beverage fits within the remaining calories", async () => {
+    const patientId = "fbf6dd73-f2bc-4f97-aafb-130b4f38229e";
+    const dietOrderId = "a253fcae-f9bf-4a22-be2d-f78f658a7c7d";
+
+    await db.dietOrder.create({
+      data: {
+        id: dietOrderId,
+        name: "Dinner Water Fallback",
+        minimumCalories: 0,
+        maximumCalories: 2050,
+      },
+    });
+
+    await createPatientWithSpecificDiet(patientId, "Sophie Chapman", dietOrderId);
+
+    await db.trayOrder.create({
+      data: {
+        id: "7707554c-c1bc-4a28-a278-88ab780f38de",
+        patientId,
+        mealTime: MealTime.BREAKFAST,
+        scheduledFor: new Date("2025-08-24T08:00:00.000Z"),
+        recipes: {
+          create: [
+            {
+              id: "b8dbb505-ae92-42a1-b4fe-b1c543f0c56b",
+              recipeId: "15c8ac77-128e-4825-960e-eb5638376e00",
+            },
+            {
+              id: "e2a138c0-7ca3-45ce-9d5b-96cbf79407d1",
+              recipeId: "9e329204-a9d3-445b-ad6d-5eeb6456af66",
+            },
+            {
+              id: "404c2893-396b-45b1-8798-f5c9b51d15e5",
+              recipeId: "6bad53cc-89fa-403b-844a-70926fa9b00f",
+            },
+          ],
+        },
+      },
+    });
+
+    await db.trayOrder.create({
+      data: {
+        id: "ae47fe10-d777-42ad-8a50-b0db27e2bb90",
+        patientId,
+        mealTime: MealTime.LUNCH,
+        scheduledFor: new Date("2025-08-24T12:00:00.000Z"),
+        recipes: {
+          create: [
+            {
+              id: "41b2796b-11be-4e9f-ae88-f98e0d333f9d",
+              recipeId: "3080a02c-d6a9-4634-8878-711920f11a66",
+            },
+            {
+              id: "f2ef0318-1648-44d0-ad04-3ebd782d62db",
+              recipeId: "59f4f0b4-2075-40a4-b95b-883433eed1a2",
+            },
+            {
+              id: "89f5e2b6-768c-4f18-b145-1bd13d3b0074",
+              recipeId: "6bad53cc-89fa-403b-844a-70926fa9b00f",
+            },
+          ],
+        },
+      },
+    });
+
+    const summary = await triggerSmartOrderSystem(TARGET_DATE);
+
+    const dinnerOrder = await db.trayOrder.findFirst({
+      where: {
+        patientId,
+        mealTime: MealTime.DINNER,
+        scheduledFor: {
+          gte: TARGET_DATE,
+          lt: new Date("2025-08-25T00:00:00.000Z"),
+        },
+      },
+      include: {
+        recipes: {
+          include: {
+            recipe: true,
+          },
+        },
+      },
+    });
+
+    expect(dinnerOrder).not.toBeNull();
+    expect(dinnerOrder!.recipes.some(({ recipe }) => recipe.category === "Beverages")).toBe(true);
+    expect(dinnerOrder!.recipes.some(({ recipe }) => recipe.name === "Water")).toBe(true);
+    expect(dinnerOrder!.recipes.some(({ recipe }) => recipe.name === "Coffee")).toBe(false);
+    expect(dinnerOrder!.recipes.some(({ recipe }) => recipe.name === "Chocolate Ensure")).toBe(false);
+    expect(dinnerOrder!.recipes.reduce((sum, trayOrderRecipe) => sum + trayOrderRecipe.recipe.calories, 0)).toBe(450);
+    expect(summary.mealsSkipped).toBe(0);
+  });
+
   it("fails fast when a scheduled meal has no eligible entree options", async () => {
     await db.recipeMealAvailability.deleteMany({
       where: {
@@ -306,6 +401,19 @@ describe("triggerSmartOrderSystem", () => {
     });
 
     await expect(triggerSmartOrderSystem(TARGET_DATE)).rejects.toThrow("Smart order requires at least one entree option for dinner");
+  });
+
+  it("fails fast when a scheduled meal has no eligible beverage options", async () => {
+    await db.recipeMealAvailability.deleteMany({
+      where: {
+        mealTime: MealTime.DINNER,
+        recipe: {
+          category: "Beverages",
+        },
+      },
+    });
+
+    await expect(triggerSmartOrderSystem(TARGET_DATE)).rejects.toThrow("Smart order requires at least one beverage option for dinner");
   });
 });
 

@@ -68,13 +68,9 @@ export function buildMealsForPatient(input: PatientMealPlanInput, options: FoodO
 
 function getMealCalorieTarget(goals: PatientCalorieGoals, scheduledCalories: number, remainingMealCount: number): MealCalorieTarget {
   const remainingMinimumCalories = Math.max(0, (goals.minimumCalories ?? 0) - scheduledCalories);
-
   const remainingMaximumCalories = goals.maximumCalories === null ? null : Math.max(0, goals.maximumCalories - scheduledCalories);
-
   const minimumCalories = remainingMealCount > 0 ? Math.ceil(remainingMinimumCalories / remainingMealCount) : 0;
-
   const maximumCalories = remainingMaximumCalories === null || remainingMealCount === 0 ? remainingMaximumCalories : Math.floor(remainingMaximumCalories / remainingMealCount);
-
   const desiredCalories = maximumCalories === null ? minimumCalories : Math.min(Math.max(minimumCalories, 0), Math.max(maximumCalories, 0));
 
   return {
@@ -86,7 +82,6 @@ function getMealCalorieTarget(goals: PatientCalorieGoals, scheduledCalories: num
 
 function selectMealForTarget(mealTime: ScheduledMealTime, target: MealCalorieTarget, options: FoodOptions): PlannedMeal | null {
   const candidates = buildMealCandidates(options).filter((candidate) => isCandidateWithinMaximum(candidate, target));
-
   const sortedCandidates = [...candidates].sort((left, right) => compareMealCandidates(left, right, target));
   const selectedMeal = sortedCandidates[0];
 

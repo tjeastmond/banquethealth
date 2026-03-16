@@ -37,7 +37,7 @@ You're an expert software engineer and SQL expert. You write clean and concise c
 
 - Write tests for core behavior before or alongside implementation.
 - Tests reset the database state before each run.
-- Use `test/example.spec.ts` as a reference; add tests in `test/` as needed.
+- Use `test/database.spec.ts` as a reference; add tests in `test/` as needed.
 
 ### AI Usage
 

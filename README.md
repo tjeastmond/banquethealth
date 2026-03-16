@@ -39,7 +39,7 @@ case-challenge/
 ├── src/
 │   ├── smartOrder.ts       # Implement triggerSmartOrderSystem here
 ├── test/
-│   ├── example.spec.ts     # Example tests; add more as needed
+│   ├── database.spec.ts     # Database reset tests; add more as needed
 ```
 
 ## Getting started
@@ -63,7 +63,7 @@ You can connect via a GUI tool such as PgAdmin using the following configuration
 
 A simple test framework has also been provided. Tests reset the database state before each run.
 - Run tests with: npm run test
-- See test/example.spec.ts for a sample test
+- See test/database.spec.ts for a sample test
 - Raw CSV seed data is available in prisma/seed/rawData
 
 ## Product Requirements

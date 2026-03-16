@@ -9,8 +9,9 @@
     "db-down": "docker compose -f docker/docker-compose.yml down",
     "format": "prettier --write \"**/*.{js,ts,json}\"",
     "save-db": "ts-node scripts/saveDbSnapshot.ts",
-    "init-db": "npm run reset-db",
+    "init-db": "npx prisma migrate deploy && npm run reset-db",
     "reset-db": "ts-node scripts/restoreDbSnapshot.ts",
+    "seed:additional": "ts-node prisma/seed/seedAdditional.ts",
     "test": "jest --config test/jest.config.js",
     "start": "ts-node src/entrypoint.ts"
   },

@@ -1,9 +1,5 @@
 import { MealTime } from "@prisma/client";
-import {
-  getPatientsMissingMealsForDate,
-  type PatientMissingMeal,
-  SCHEDULED_MEAL_TIMES,
-} from "./smartOrderQueries";
+import { getPatientsMissingMealsForDate, type PatientMissingMeal, SCHEDULED_MEAL_TIMES } from "./smartOrderQueries";
 
 export type ScheduledMealTime = (typeof SCHEDULED_MEAL_TIMES)[number];
 
@@ -13,19 +9,13 @@ export interface PatientMealGaps {
   missingMealTimes: ScheduledMealTime[];
 }
 
-const SCHEDULED_MEAL_ORDER: ReadonlyMap<ScheduledMealTime, number> = new Map(
-  SCHEDULED_MEAL_TIMES.map((mealTime, index) => [mealTime, index])
-);
+const SCHEDULED_MEAL_ORDER: ReadonlyMap<ScheduledMealTime, number> = new Map(SCHEDULED_MEAL_TIMES.map((mealTime, index) => [mealTime, index]));
 
-export function isScheduledMealTime(
-  mealTime: MealTime
-): mealTime is ScheduledMealTime {
+export function isScheduledMealTime(mealTime: MealTime): mealTime is ScheduledMealTime {
   return SCHEDULED_MEAL_TIMES.includes(mealTime as ScheduledMealTime);
 }
 
-export function groupMissingMealsByPatient(
-  missingMeals: PatientMissingMeal[]
-): PatientMealGaps[] {
+export function groupMissingMealsByPatient(missingMeals: PatientMissingMeal[]): PatientMealGaps[] {
   const grouped = new Map<string, PatientMealGaps>();
 
   for (const missingMeal of missingMeals) {
@@ -51,17 +41,13 @@ export function groupMissingMealsByPatient(
     .map((patient) => ({
       ...patient,
       missingMealTimes: patient.missingMealTimes.sort(
-        (left, right) =>
-          (SCHEDULED_MEAL_ORDER.get(left) ?? Number.MAX_SAFE_INTEGER) -
-          (SCHEDULED_MEAL_ORDER.get(right) ?? Number.MAX_SAFE_INTEGER)
+        (left, right) => (SCHEDULED_MEAL_ORDER.get(left) ?? Number.MAX_SAFE_INTEGER) - (SCHEDULED_MEAL_ORDER.get(right) ?? Number.MAX_SAFE_INTEGER),
       ),
     }))
     .sort((left, right) => left.patientName.localeCompare(right.patientName));
 }
 
-export async function getPatientMealGapsForDate(
-  targetDate: Date
-): Promise<PatientMealGaps[]> {
+export async function getPatientMealGapsForDate(targetDate: Date): Promise<PatientMealGaps[]> {
   const missingMeals = await getPatientsMissingMealsForDate(targetDate);
   return groupMissingMealsByPatient(missingMeals);
 }

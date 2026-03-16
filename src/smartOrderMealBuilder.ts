@@ -32,21 +32,14 @@ interface MealCalorieTarget {
 export async function getSmartOrderFoodOptions(): Promise<FoodOptions> {
   const options = await getFoodOptions();
 
-  if (
-    options.entrees.length === 0 ||
-    options.sides.length === 0 ||
-    options.beverages.length === 0
-  ) {
+  if (options.entrees.length === 0 || options.sides.length === 0 || options.beverages.length === 0) {
     throw new Error("Smart order requires entree, side, and beverage options");
   }
 
   return options;
 }
 
-export function buildMealsForPatient(
-  input: PatientMealPlanInput,
-  options: FoodOptions,
-): PlannedMeal[] {
+export function buildMealsForPatient(input: PatientMealPlanInput, options: FoodOptions): PlannedMeal[] {
   let scheduledCalories = input.scheduledCalories;
   const plannedMeals: PlannedMeal[] = [];
 
@@ -73,35 +66,16 @@ export function buildMealsForPatient(
   return plannedMeals;
 }
 
-function getMealCalorieTarget(
-  goals: PatientCalorieGoals,
-  scheduledCalories: number,
-  remainingMealCount: number,
-): MealCalorieTarget {
-  const remainingMinimumCalories = Math.max(
-    0,
-    (goals.minimumCalories ?? 0) - scheduledCalories,
-  );
+function getMealCalorieTarget(goals: PatientCalorieGoals, scheduledCalories: number, remainingMealCount: number): MealCalorieTarget {
+  const remainingMinimumCalories = Math.max(0, (goals.minimumCalories ?? 0) - scheduledCalories);
 
-  const remainingMaximumCalories =
-    goals.maximumCalories === null
-      ? null
-      : Math.max(0, goals.maximumCalories - scheduledCalories);
+  const remainingMaximumCalories = goals.maximumCalories === null ? null : Math.max(0, goals.maximumCalories - scheduledCalories);
 
-  const minimumCalories =
-    remainingMealCount > 0
-      ? Math.ceil(remainingMinimumCalories / remainingMealCount)
-      : 0;
+  const minimumCalories = remainingMealCount > 0 ? Math.ceil(remainingMinimumCalories / remainingMealCount) : 0;
 
-  const maximumCalories =
-    remainingMaximumCalories === null || remainingMealCount === 0
-      ? remainingMaximumCalories
-      : Math.floor(remainingMaximumCalories / remainingMealCount);
+  const maximumCalories = remainingMaximumCalories === null || remainingMealCount === 0 ? remainingMaximumCalories : Math.floor(remainingMaximumCalories / remainingMealCount);
 
-  const desiredCalories =
-    maximumCalories === null
-      ? minimumCalories
-      : Math.min(Math.max(minimumCalories, 0), Math.max(maximumCalories, 0));
+  const desiredCalories = maximumCalories === null ? minimumCalories : Math.min(Math.max(minimumCalories, 0), Math.max(maximumCalories, 0));
 
   return {
     desiredCalories,
@@ -110,18 +84,10 @@ function getMealCalorieTarget(
   };
 }
 
-function selectMealForTarget(
-  mealTime: ScheduledMealTime,
-  target: MealCalorieTarget,
-  options: FoodOptions,
-): PlannedMeal | null {
-  const candidates = buildMealCandidates(options).filter((candidate) =>
-    isCandidateWithinMaximum(candidate, target),
-  );
+function selectMealForTarget(mealTime: ScheduledMealTime, target: MealCalorieTarget, options: FoodOptions): PlannedMeal | null {
+  const candidates = buildMealCandidates(options).filter((candidate) => isCandidateWithinMaximum(candidate, target));
 
-  const sortedCandidates = [...candidates].sort((left, right) =>
-    compareMealCandidates(left, right, target),
-  );
+  const sortedCandidates = [...candidates].sort((left, right) => compareMealCandidates(left, right, target));
   const selectedMeal = sortedCandidates[0];
 
   if (!selectedMeal) {
@@ -135,10 +101,7 @@ function selectMealForTarget(
   };
 }
 
-function isCandidateWithinMaximum(
-  candidate: MealCandidate,
-  target: MealCalorieTarget,
-): boolean {
+function isCandidateWithinMaximum(candidate: MealCandidate, target: MealCalorieTarget): boolean {
   if (target.maximumCalories === null) {
     return true;
   }
@@ -154,16 +117,11 @@ function buildMealCandidates(options: FoodOptions): MealCandidate[] {
   for (const entree of options.entrees) {
     for (const side of optionalSides) {
       for (const beverage of optionalBeverages) {
-        const recipes = [entree, side, beverage].filter(
-          (recipe): recipe is FoodOption => recipe !== undefined,
-        );
+        const recipes = [entree, side, beverage].filter((recipe): recipe is FoodOption => recipe !== undefined);
 
         candidates.push({
           recipes,
-          totalCalories: recipes.reduce(
-            (sum, recipe) => sum + recipe.calories,
-            0,
-          ),
+          totalCalories: recipes.reduce((sum, recipe) => sum + recipe.calories, 0),
         });
       }
     }
@@ -172,11 +130,7 @@ function buildMealCandidates(options: FoodOptions): MealCandidate[] {
   return candidates;
 }
 
-function compareMealCandidates(
-  left: MealCandidate,
-  right: MealCandidate,
-  target: MealCalorieTarget,
-): number {
+function compareMealCandidates(left: MealCandidate, right: MealCandidate, target: MealCalorieTarget): number {
   const leftScore = getMealCandidateScore(left, target);
   const rightScore = getMealCandidateScore(right, target);
 
@@ -205,15 +159,10 @@ function getMealCandidateScore(
   shortfallPenalty: number;
   distanceFromDesired: number;
 } {
-  const shortfallPenalty = Math.max(
-    0,
-    target.minimumCalories - candidate.totalCalories,
-  );
+  const shortfallPenalty = Math.max(0, target.minimumCalories - candidate.totalCalories);
 
   return {
     shortfallPenalty,
-    distanceFromDesired: Math.abs(
-      candidate.totalCalories - target.desiredCalories,
-    ),
+    distanceFromDesired: Math.abs(candidate.totalCalories - target.desiredCalories),
   };
 }

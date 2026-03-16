@@ -27,14 +27,8 @@ describe("triggerSmartOrderSystem", () => {
     });
 
     expect(trayOrders).toHaveLength(3);
-    expect(trayOrders.map((order) => order.mealTime)).toEqual([
-      MealTime.BREAKFAST,
-      MealTime.LUNCH,
-      MealTime.DINNER,
-    ]);
-    expect(trayOrders.every((order) => order.mealTime !== MealTime.SNACK)).toBe(
-      true
-    );
+    expect(trayOrders.map((order) => order.mealTime)).toEqual([MealTime.BREAKFAST, MealTime.LUNCH, MealTime.DINNER]);
+    expect(trayOrders.every((order) => order.mealTime !== MealTime.SNACK)).toBe(true);
     expect(trayOrders.every((order) => order.recipes.length > 0)).toBe(true);
   });
 
@@ -82,12 +76,7 @@ describe("triggerSmartOrderSystem", () => {
     });
 
     expect(dinnerOrder).not.toBeNull();
-    expect(
-      dinnerOrder!.recipes.reduce(
-        (sum, trayOrderRecipe) => sum + trayOrderRecipe.recipe.calories,
-        0
-      )
-    ).toBe(500);
+    expect(dinnerOrder!.recipes.reduce((sum, trayOrderRecipe) => sum + trayOrderRecipe.recipe.calories, 0)).toBe(500);
   });
 
   it("is idempotent across reruns", async () => {
@@ -120,11 +109,7 @@ describe("triggerSmartOrderSystem", () => {
       },
     });
 
-    await createPatientWithSpecificDiet(
-      patientId,
-      "Super Hans",
-      dietOrderId
-    );
+    await createPatientWithSpecificDiet(patientId, "Super Hans", dietOrderId);
 
     await db.trayOrder.create({
       data: {
@@ -205,28 +190,18 @@ describe("triggerSmartOrderSystem", () => {
       },
     });
 
-    const totalCalories = allRecipes.reduce(
-      (sum, trayOrderRecipe) => sum + trayOrderRecipe.recipe.calories,
-      0
-    );
+    const totalCalories = allRecipes.reduce((sum, trayOrderRecipe) => sum + trayOrderRecipe.recipe.calories, 0);
 
     expect(dinnerOrder).toBeNull();
     expect(totalCalories).toBe(1200);
   });
 });
 
-async function createPatientWithDiet(
-  patientId: string,
-  name: string
-): Promise<void> {
+async function createPatientWithDiet(patientId: string, name: string): Promise<void> {
   await createPatientWithSpecificDiet(patientId, name, REGULAR_DIET_ID);
 }
 
-async function createPatientWithSpecificDiet(
-  patientId: string,
-  name: string,
-  dietOrderId: string
-): Promise<void> {
+async function createPatientWithSpecificDiet(patientId: string, name: string, dietOrderId: string): Promise<void> {
   await db.patient.create({
     data: {
       id: patientId,

@@ -73,11 +73,7 @@ describe("smartOrderQueries", () => {
     const orders = await getExistingTrayOrdersForDate(TARGET_DATE, [PATIENT_ID]);
 
     expect(orders).toHaveLength(3);
-    expect(orders.map((order) => order.mealTime)).toEqual([
-      MealTime.BREAKFAST,
-      MealTime.LUNCH,
-      MealTime.DINNER,
-    ]);
+    expect(orders.map((order) => order.mealTime)).toEqual([MealTime.BREAKFAST, MealTime.LUNCH, MealTime.DINNER]);
     expect(orders[0]?.recipes).toEqual([
       { recipeId: "15c8ac77-128e-4825-960e-eb5638376e00", calories: 350 },
       { recipeId: "9e329204-a9d3-445b-ad6d-5eeb6456af66", calories: 150 },

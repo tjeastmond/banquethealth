@@ -58,15 +58,11 @@ interface PatientDietOrderRow {
 }
 
 /** Meal times the smart order system is responsible for scheduling. */
-export const SCHEDULED_MEAL_TIMES = [
-  MealTime.BREAKFAST,
-  MealTime.LUNCH,
-  MealTime.DINNER,
-] as const;
+export const SCHEDULED_MEAL_TIMES = [MealTime.BREAKFAST, MealTime.LUNCH, MealTime.DINNER] as const;
 
 const FOOD_CATEGORIES = ["Entrees", "Sides", "Beverages"] as const;
 
-type FoodCategory = typeof FOOD_CATEGORIES[number];
+type FoodCategory = (typeof FOOD_CATEGORIES)[number];
 
 interface RecipeRow extends FoodOption {
   category: FoodCategory;
@@ -77,17 +73,7 @@ interface RecipeRow extends FoodOption {
  * when the run targets a given calendar day. Uses UTC day boundaries.
  */
 export function getDateBoundaries(targetDate: Date): { start: Date; end: Date } {
-  const start = new Date(
-    Date.UTC(
-      targetDate.getUTCFullYear(),
-      targetDate.getUTCMonth(),
-      targetDate.getUTCDate(),
-      0,
-      0,
-      0,
-      0
-    )
-  );
+  const start = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), targetDate.getUTCDate(), 0, 0, 0, 0));
   const end = new Date(start);
   end.setUTCDate(end.getUTCDate() + 1);
   return { start, end };
@@ -97,9 +83,7 @@ export function getDateBoundaries(targetDate: Date): { start: Date; end: Date } 
  * Returns one row per missing scheduled meal slot for the target day.
  * The dataset is already narrowed to patients with fewer than three scheduled meals.
  */
-export async function getPatientsMissingMealsForDate(
-  targetDate: Date
-): Promise<PatientMissingMeal[]> {
+export async function getPatientsMissingMealsForDate(targetDate: Date): Promise<PatientMissingMeal[]> {
   const { start, end } = getDateBoundaries(targetDate);
 
   return db.$queryRaw<PatientMissingMeal[]>`
@@ -157,15 +141,9 @@ export async function getFoodOptions(): Promise<FoodOptions> {
   `;
 
   return {
-    entrees: rows
-      .filter((row) => row.category === "Entrees")
-      .map(({ category: _category, ...recipe }) => recipe),
-    sides: rows
-      .filter((row) => row.category === "Sides")
-      .map(({ category: _category, ...recipe }) => recipe),
-    beverages: rows
-      .filter((row) => row.category === "Beverages")
-      .map(({ category: _category, ...recipe }) => recipe),
+    entrees: rows.filter((row) => row.category === "Entrees").map(({ category: _category, ...recipe }) => recipe),
+    sides: rows.filter((row) => row.category === "Sides").map(({ category: _category, ...recipe }) => recipe),
+    beverages: rows.filter((row) => row.category === "Beverages").map(({ category: _category, ...recipe }) => recipe),
   };
 }
 
@@ -173,14 +151,9 @@ export async function getFoodOptions(): Promise<FoodOptions> {
  * Returns existing breakfast/lunch/dinner tray orders for the target day,
  * including the recipe calorie payload needed for meal sizing.
  */
-export async function getExistingTrayOrdersForDate(
-  targetDate: Date,
-  patientIds?: string[]
-): Promise<TrayOrderWithRecipes[]> {
+export async function getExistingTrayOrdersForDate(targetDate: Date, patientIds?: string[]): Promise<TrayOrderWithRecipes[]> {
   const { start, end } = getDateBoundaries(targetDate);
-  const patientFilter = patientIds?.length
-    ? Prisma.sql`AND t.patient_id IN (${Prisma.join(patientIds)})`
-    : Prisma.empty;
+  const patientFilter = patientIds?.length ? Prisma.sql`AND t.patient_id IN (${Prisma.join(patientIds)})` : Prisma.empty;
 
   const rows = await db.$queryRaw<TrayOrderWithRecipesRow[]>(Prisma.sql`
     SELECT
@@ -223,10 +196,7 @@ export async function getExistingTrayOrdersForDate(
  * Returns all calories already scheduled for the target day, including snacks.
  * This is the dataset the meal-builder should use to size any missing tray.
  */
-export async function getScheduledCaloriesForDate(
-  targetDate: Date,
-  patientIds: string[]
-): Promise<Map<string, number>> {
+export async function getScheduledCaloriesForDate(targetDate: Date, patientIds: string[]): Promise<Map<string, number>> {
   if (patientIds.length === 0) {
     return new Map();
   }
@@ -254,9 +224,7 @@ export async function getScheduledCaloriesForDate(
 }
 
 /** Fetch each patient's calorie range from active patient_diet_orders + diet_orders. */
-export async function getPatientCalorieRanges(
-  patientIds: string[]
-): Promise<PatientCalorieRange[]> {
+export async function getPatientCalorieRanges(patientIds: string[]): Promise<PatientCalorieRange[]> {
   if (patientIds.length === 0) {
     return [];
   }

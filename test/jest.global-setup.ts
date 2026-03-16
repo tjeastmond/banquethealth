@@ -1,5 +1,5 @@
-import { runCommand } from "../scripts/utils"
+import { runCommand } from "../scripts/utils";
 
 export default async () => {
-  await runCommand('npm run save-db')
-}
+  await runCommand("npm run save-db");
+};

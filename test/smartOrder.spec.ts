@@ -12,7 +12,7 @@ describe("triggerSmartOrderSystem", () => {
 
     await createPatientWithDiet(patientId, "Jeremy Usborne");
 
-    await triggerSmartOrderSystem(TARGET_DATE);
+    const summary = await triggerSmartOrderSystem(TARGET_DATE);
 
     const trayOrders = await db.trayOrder.findMany({
       where: {
@@ -30,10 +30,12 @@ describe("triggerSmartOrderSystem", () => {
     expect(trayOrders.map((order) => order.mealTime)).toEqual([MealTime.BREAKFAST, MealTime.LUNCH, MealTime.DINNER]);
     expect(trayOrders.every((order) => order.mealTime !== MealTime.SNACK)).toBe(true);
     expect(trayOrders.every((order) => order.recipes.length > 0)).toBe(true);
+    expect(summary.mealsCreated).toBe(6);
+    expect(summary.mealsSkipped).toBe(0);
   });
 
   it("does not duplicate meals that are already scheduled", async () => {
-    await triggerSmartOrderSystem(TARGET_DATE);
+    const summary = await triggerSmartOrderSystem(TARGET_DATE);
 
     const trayOrders = await db.trayOrder.findMany({
       where: {
@@ -52,10 +54,11 @@ describe("triggerSmartOrderSystem", () => {
     expect(trayOrders.filter((order) => order.mealTime === MealTime.BREAKFAST)).toHaveLength(1);
     expect(trayOrders.filter((order) => order.mealTime === MealTime.LUNCH)).toHaveLength(1);
     expect(trayOrders.filter((order) => order.mealTime === MealTime.DINNER)).toHaveLength(1);
+    expect(summary.patientResults.some((patient) => patient.patientId === EXISTING_PATIENT_ID)).toBe(true);
   });
 
   it("accounts for earlier scheduled calories when constructing a missing meal", async () => {
-    await triggerSmartOrderSystem(TARGET_DATE);
+    const summary = await triggerSmartOrderSystem(TARGET_DATE);
 
     const dinnerOrder = await db.trayOrder.findFirst({
       where: {
@@ -77,11 +80,12 @@ describe("triggerSmartOrderSystem", () => {
 
     expect(dinnerOrder).not.toBeNull();
     expect(dinnerOrder!.recipes.reduce((sum, trayOrderRecipe) => sum + trayOrderRecipe.recipe.calories, 0)).toBe(500);
+    expect(summary.mealsSkipped).toBe(0);
   });
 
   it("is idempotent across reruns", async () => {
-    await triggerSmartOrderSystem(TARGET_DATE);
-    await triggerSmartOrderSystem(TARGET_DATE);
+    const firstRun = await triggerSmartOrderSystem(TARGET_DATE);
+    const secondRun = await triggerSmartOrderSystem(TARGET_DATE);
 
     const trayOrders = await db.trayOrder.findMany({
       where: {
@@ -94,6 +98,9 @@ describe("triggerSmartOrderSystem", () => {
     });
 
     expect(trayOrders).toHaveLength(3);
+    expect(firstRun.mealsCreated).toBeGreaterThan(0);
+    expect(secondRun.mealsCreated).toBe(0);
+    expect(secondRun.mealsSkipped).toBe(0);
   });
 
   it("never creates a meal that would push total daily calories above the maximum", async () => {
@@ -162,7 +169,7 @@ describe("triggerSmartOrderSystem", () => {
       },
     });
 
-    await triggerSmartOrderSystem(TARGET_DATE);
+    const summary = await triggerSmartOrderSystem(TARGET_DATE);
 
     const dinnerOrder = await db.trayOrder.findFirst({
       where: {
@@ -194,6 +201,85 @@ describe("triggerSmartOrderSystem", () => {
 
     expect(dinnerOrder).toBeNull();
     expect(totalCalories).toBe(1200);
+    expect(summary.mealsSkipped).toBe(1);
+    expect(summary.skippedByReason.max_calories_exceeded).toBe(1);
+    expect(summary.patientResults).toContainEqual({
+      patientId,
+      patientName: "Super Hans",
+      outcomes: [{ status: "skipped", mealTime: MealTime.DINNER, reason: "max_calories_exceeded" }],
+    });
+  });
+
+  it("creates later compliant meals even when an earlier missing meal must be skipped for max calories", async () => {
+    const patientId = "e9de2bd0-6322-42dc-b310-b22d0fa6127d";
+    const dietOrderId = "4ce5301d-d656-4a79-a851-11d40e08c237";
+
+    await db.dietOrder.create({
+      data: {
+        id: dietOrderId,
+        name: "Tight Split Max",
+        minimumCalories: 0,
+        maximumCalories: 1350,
+      },
+    });
+
+    await createPatientWithSpecificDiet(patientId, "Hans Gruber", dietOrderId);
+
+    await db.trayOrder.create({
+      data: {
+        id: "33ee45cb-3380-4ffd-85e5-870d4be4eab6",
+        patientId,
+        mealTime: MealTime.BREAKFAST,
+        scheduledFor: new Date("2025-08-24T08:00:00.000Z"),
+        recipes: {
+          create: [
+            {
+              id: "6a1363b6-a258-4ef7-9cd2-3634c5db3697",
+              recipeId: "3080a02c-d6a9-4634-8878-711920f11a66",
+            },
+            {
+              id: "d2f27fc4-d6c4-48dd-a74a-8ead900cf4fe",
+              recipeId: "59f4f0b4-2075-40a4-b95b-883433eed1a2",
+            },
+            {
+              id: "c376955f-0d45-41e0-85ca-7783a8f54773",
+              recipeId: "6bad53cc-89fa-403b-844a-70926fa9b00f",
+            },
+          ],
+        },
+      },
+    });
+
+    const summary = await triggerSmartOrderSystem(TARGET_DATE);
+
+    const trayOrders = await db.trayOrder.findMany({
+      where: {
+        patientId,
+        scheduledFor: {
+          gte: TARGET_DATE,
+          lt: new Date("2025-08-25T00:00:00.000Z"),
+        },
+      },
+      orderBy: {
+        scheduledFor: "asc",
+      },
+    });
+
+    expect(trayOrders.map((order) => order.mealTime)).toEqual([MealTime.BREAKFAST, MealTime.DINNER]);
+    const patientResult = summary.patientResults.find((patient) => patient.patientId === patientId);
+
+    expect(patientResult).toBeDefined();
+    expect(patientResult!.patientName).toBe("Hans Gruber");
+    expect(patientResult!.outcomes).toHaveLength(2);
+    expect(patientResult!.outcomes[0]).toEqual({ status: "skipped", mealTime: MealTime.LUNCH, reason: "max_calories_exceeded" });
+    expect(patientResult!.outcomes[1].status).toBe("planned");
+
+    if (patientResult!.outcomes[1].status !== "planned") {
+      throw new Error("expected dinner to be planned");
+    }
+
+    expect(patientResult!.outcomes[1].meal.mealTime).toBe(MealTime.DINNER);
+    expect(patientResult!.outcomes[1].meal.totalCalories).toBeLessThanOrEqual(450);
   });
 });
 

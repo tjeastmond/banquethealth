@@ -37,6 +37,31 @@ describe("smartOrderQueries", () => {
         missingMealTime: MealTime.LUNCH,
       },
       {
+        patientId: "9aeabca1-b55d-49db-b406-7d252d262a57",
+        patientName: "Gene Belcher",
+        missingMealTime: MealTime.DINNER,
+      },
+      {
+        patientId: "5d70767f-c7fe-44a2-a1ea-baa8dfbd2140",
+        patientName: "Linda Belcher",
+        missingMealTime: MealTime.BREAKFAST,
+      },
+      {
+        patientId: "5d70767f-c7fe-44a2-a1ea-baa8dfbd2140",
+        patientName: "Linda Belcher",
+        missingMealTime: MealTime.LUNCH,
+      },
+      {
+        patientId: "3590aaf3-9521-4986-84cb-a33ba42bd76e",
+        patientName: "Louise Belcher",
+        missingMealTime: MealTime.BREAKFAST,
+      },
+      {
+        patientId: "3590aaf3-9521-4986-84cb-a33ba42bd76e",
+        patientName: "Louise Belcher",
+        missingMealTime: MealTime.DINNER,
+      },
+      {
         patientId: PATIENT_ID,
         patientName: "Mark Corrigan",
         missingMealTime: MealTime.DINNER,
@@ -66,6 +91,31 @@ describe("smartOrderQueries", () => {
         patientId: BOB_PATIENT_ID,
         patientName: "Bob Belcher",
         missingMealTime: MealTime.LUNCH,
+      },
+      {
+        patientId: "9aeabca1-b55d-49db-b406-7d252d262a57",
+        patientName: "Gene Belcher",
+        missingMealTime: MealTime.DINNER,
+      },
+      {
+        patientId: "5d70767f-c7fe-44a2-a1ea-baa8dfbd2140",
+        patientName: "Linda Belcher",
+        missingMealTime: MealTime.BREAKFAST,
+      },
+      {
+        patientId: "5d70767f-c7fe-44a2-a1ea-baa8dfbd2140",
+        patientName: "Linda Belcher",
+        missingMealTime: MealTime.LUNCH,
+      },
+      {
+        patientId: "3590aaf3-9521-4986-84cb-a33ba42bd76e",
+        patientName: "Louise Belcher",
+        missingMealTime: MealTime.BREAKFAST,
+      },
+      {
+        patientId: "3590aaf3-9521-4986-84cb-a33ba42bd76e",
+        patientName: "Louise Belcher",
+        missingMealTime: MealTime.DINNER,
       },
     ]);
   });
@@ -141,7 +191,7 @@ describe("smartOrderQueries", () => {
     ]);
   });
 
-  it("ignores inactive diet orders when resolving calorie ranges", async () => {
+  it("fails fast when a patient has multiple diet plans", async () => {
     await db.patientDietOrder.create({
       data: {
         id: "50838a6f-0f1d-4879-a333-2aa27a0ee92d",
@@ -150,15 +200,7 @@ describe("smartOrderQueries", () => {
       },
     });
 
-    const calorieRanges = await getPatientCalorieRanges([PATIENT_ID]);
-
-    expect(calorieRanges).toEqual([
-      {
-        patientId: PATIENT_ID,
-        minimumCalories: 1500,
-        maximumCalories: 2500,
-      },
-    ]);
+    await expect(getPatientCalorieRanges([PATIENT_ID])).rejects.toThrow(`Patient ${PATIENT_ID} has multiple diet plans. Expected exactly zero or one diet plan per patient.`);
   });
 
   it("groups food options by supported category only", async () => {

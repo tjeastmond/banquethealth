@@ -1,4 +1,3 @@
-import { MealTime } from "@prisma/client";
 import { db } from "../db";
 import { getDateBoundaries, SCHEDULED_MEAL_TIMES } from "../smartOrderQueries";
 
@@ -73,12 +72,14 @@ export async function getPatientTrayOrderReport(targetDate: Date): Promise<Patie
     const meals: PatientTrayOrderReportRow["meals"] = {};
 
     for (const trayOrder of patient.trayOrders) {
-      if (trayOrder.mealTime === MealTime.SNACK || meals[trayOrder.mealTime]) {
-        continue;
+      const mealTime = trayOrder.mealTime as ReportMeal["mealTime"];
+
+      if (meals[mealTime]) {
+        throw new Error(`Patient ${patient.name} (${patient.id}) has duplicate ${mealTime.toLowerCase()} tray orders on ${formatServiceDate(targetDate)}.`);
       }
 
-      meals[trayOrder.mealTime] = {
-        mealTime: trayOrder.mealTime,
+      meals[mealTime] = {
+        mealTime,
         recipeNames: trayOrder.recipes.map((trayOrderRecipe) => trayOrderRecipe.recipe.name),
         totalCalories: trayOrder.recipes.reduce((total, trayOrderRecipe) => total + trayOrderRecipe.recipe.calories, 0),
       };
@@ -102,16 +103,11 @@ export function renderPatientTrayOrderReport(rows: PatientTrayOrderReportRow[], 
 
     return {
       hasMissingMeal,
-      columns: [
-        colorize(row.patientName, hasMissingMeal ? ANSI.yellow : ANSI.bold),
-        ...SCHEDULED_MEAL_TIMES.map((mealTime) => formatMealCell(row.meals[mealTime])),
-      ],
+      columns: [colorize(row.patientName, hasMissingMeal ? ANSI.yellow : ANSI.bold), ...SCHEDULED_MEAL_TIMES.map((mealTime) => formatMealCell(row.meals[mealTime]))],
     };
   });
 
-  const widths = headers.map((header, index) =>
-    Math.max(visibleLength(header), ...tableRows.map((row) => visibleLength(row.columns[index] ?? ""))),
-  );
+  const widths = headers.map((header, index) => Math.max(visibleLength(header), ...tableRows.map((row) => visibleLength(row.columns[index] ?? ""))));
 
   const separator = buildSeparator(widths);
   const summaryCount = tableRows.filter((row) => row.hasMissingMeal).length;
@@ -142,9 +138,7 @@ function buildSeparator(widths: number[]): string {
 }
 
 function buildRow(columns: string[], widths: number[]): string {
-  return `| ${columns
-    .map((column, index) => `${column}${" ".repeat(Math.max(widths[index] - visibleLength(column), 0))}`)
-    .join(" | ")} |`;
+  return `| ${columns.map((column, index) => `${column}${" ".repeat(Math.max(widths[index] - visibleLength(column), 0))}`).join(" | ")} |`;
 }
 
 function formatServiceDate(targetDate: Date): string {

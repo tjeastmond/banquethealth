@@ -29,6 +29,7 @@ model PatientDietOrder {
 
   @@index([patientId])
   @@index([dietOrderId])
+  @@unique([patientId])
   @@map("patient_diet_orders")
 }
 

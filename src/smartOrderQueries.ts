@@ -290,15 +290,10 @@ export async function getPatientCalorieRanges(patientIds: string[]): Promise<Pat
         select: {
           dietOrder: {
             select: {
-              id: true,
-              isActive: true,
               minimumCalories: true,
               maximumCalories: true,
             },
           },
-        },
-        orderBy: {
-          dietOrderId: "asc",
         },
       },
     },
@@ -318,24 +313,20 @@ export async function getPatientCalorieRanges(patientIds: string[]): Promise<Pat
   }
 
   for (const row of rows) {
-    const existing = byPatient.get(row.id);
-
-    if (!existing || existing.minimumCalories !== null || existing.maximumCalories !== null) {
-      continue;
+    if (row.patientDietOrders.length > 1) {
+      throw new Error(`Patient ${row.id} has multiple diet plans. Expected exactly zero or one diet plan per patient.`);
     }
 
-    const activeDietOrder = row.patientDietOrders
-      .map((patientDietOrder) => patientDietOrder.dietOrder)
-      .find((dietOrder) => dietOrder.isActive && (dietOrder.minimumCalories !== null || dietOrder.maximumCalories !== null));
+    const dietOrder = row.patientDietOrders[0]?.dietOrder;
 
-    if (!activeDietOrder) {
+    if (!dietOrder) {
       continue;
     }
 
     byPatient.set(row.id, {
       patientId: row.id,
-      minimumCalories: activeDietOrder.minimumCalories,
-      maximumCalories: activeDietOrder.maximumCalories,
+      minimumCalories: dietOrder.minimumCalories,
+      maximumCalories: dietOrder.maximumCalories,
     });
   }
 

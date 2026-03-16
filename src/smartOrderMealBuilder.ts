@@ -13,6 +13,19 @@ export interface PlannedMeal {
   totalCalories: number;
 }
 
+export type SkippedMealReason = "max_calories_exceeded";
+
+export type PlannedMealOutcome =
+  | {
+      status: "planned";
+      meal: PlannedMeal;
+    }
+  | {
+      status: "skipped";
+      mealTime: ScheduledMealTime;
+      reason: SkippedMealReason;
+    };
+
 export interface PatientMealPlanInput extends PatientCalorieGoals {
   scheduledCalories: number;
   missingMealTimes: ScheduledMealTime[];
@@ -50,11 +63,11 @@ export async function getSmartOrderFoodOptions(): Promise<FoodOptions> {
  *
  * @param input Patient calorie constraints, existing scheduled calories, and missing meal slots.
  * @param options Available recipe options grouped by category.
- * @returns {PlannedMeal[]} Planned meals ordered to match the input missing meal times.
+ * @returns {PlannedMealOutcome[]} One planning outcome per missing meal slot.
  */
-export function buildMealsForPatient(input: PatientMealPlanInput, options: FoodOptions): PlannedMeal[] {
+export function buildMealsForPatient(input: PatientMealPlanInput, options: FoodOptions): PlannedMealOutcome[] {
   let scheduledCalories = input.scheduledCalories;
-  const plannedMeals: PlannedMeal[] = [];
+  const plannedMeals: PlannedMealOutcome[] = [];
 
   for (const [index, mealTime] of input.missingMealTimes.entries()) {
     const remainingMealCount = input.missingMealTimes.length - index;
@@ -69,11 +82,19 @@ export function buildMealsForPatient(input: PatientMealPlanInput, options: FoodO
     const meal = selectMealForTarget(mealTime, calorieTarget, options);
 
     if (!meal) {
+      plannedMeals.push({
+        status: "skipped",
+        mealTime,
+        reason: "max_calories_exceeded",
+      });
       continue;
     }
 
     scheduledCalories += meal.totalCalories;
-    plannedMeals.push(meal);
+    plannedMeals.push({
+      status: "planned",
+      meal,
+    });
   }
 
   return plannedMeals;

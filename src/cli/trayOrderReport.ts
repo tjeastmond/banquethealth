@@ -1,0 +1,160 @@
+import { MealTime } from "@prisma/client";
+import { db } from "../db";
+import { getDateBoundaries, SCHEDULED_MEAL_TIMES } from "../smartOrderQueries";
+
+export interface ReportMeal {
+  mealTime: (typeof SCHEDULED_MEAL_TIMES)[number];
+  recipeNames: string[];
+  totalCalories: number;
+}
+
+export interface PatientTrayOrderReportRow {
+  patientId: string;
+  patientName: string;
+  meals: Partial<Record<(typeof SCHEDULED_MEAL_TIMES)[number], ReportMeal>>;
+}
+
+const MEAL_TIME_LABELS: Record<(typeof SCHEDULED_MEAL_TIMES)[number], string> = {
+  BREAKFAST: "Breakfast",
+  LUNCH: "Lunch",
+  DINNER: "Dinner",
+};
+
+const ANSI = {
+  reset: "\u001b[0m",
+  red: "\u001b[31m",
+  green: "\u001b[32m",
+  yellow: "\u001b[33m",
+  bold: "\u001b[1m",
+} as const;
+
+/**
+ * Returns one report row per patient for the target service date.
+ */
+export async function getPatientTrayOrderReport(targetDate: Date): Promise<PatientTrayOrderReportRow[]> {
+  const { start, end } = getDateBoundaries(targetDate);
+
+  const patients = await db.patient.findMany({
+    select: {
+      id: true,
+      name: true,
+      trayOrders: {
+        where: {
+          scheduledFor: {
+            gte: start,
+            lt: end,
+          },
+          mealTime: {
+            in: [...SCHEDULED_MEAL_TIMES],
+          },
+        },
+        select: {
+          mealTime: true,
+          recipes: {
+            select: {
+              recipe: {
+                select: {
+                  name: true,
+                  calories: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: [{ scheduledFor: "asc" }, { id: "asc" }],
+      },
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  return patients.map((patient) => {
+    const meals: PatientTrayOrderReportRow["meals"] = {};
+
+    for (const trayOrder of patient.trayOrders) {
+      if (trayOrder.mealTime === MealTime.SNACK || meals[trayOrder.mealTime]) {
+        continue;
+      }
+
+      meals[trayOrder.mealTime] = {
+        mealTime: trayOrder.mealTime,
+        recipeNames: trayOrder.recipes.map((trayOrderRecipe) => trayOrderRecipe.recipe.name),
+        totalCalories: trayOrder.recipes.reduce((total, trayOrderRecipe) => total + trayOrderRecipe.recipe.calories, 0),
+      };
+    }
+
+    return {
+      patientId: patient.id,
+      patientName: patient.name,
+      meals,
+    };
+  });
+}
+
+/**
+ * Renders a simple ANSI-colored ASCII table for a day's tray orders.
+ */
+export function renderPatientTrayOrderReport(rows: PatientTrayOrderReportRow[], targetDate: Date): string {
+  const headers = ["Patient", ...SCHEDULED_MEAL_TIMES.map((mealTime) => MEAL_TIME_LABELS[mealTime])];
+  const tableRows = rows.map((row) => {
+    const hasMissingMeal = SCHEDULED_MEAL_TIMES.some((mealTime) => !row.meals[mealTime]);
+
+    return {
+      hasMissingMeal,
+      columns: [
+        colorize(row.patientName, hasMissingMeal ? ANSI.yellow : ANSI.bold),
+        ...SCHEDULED_MEAL_TIMES.map((mealTime) => formatMealCell(row.meals[mealTime])),
+      ],
+    };
+  });
+
+  const widths = headers.map((header, index) =>
+    Math.max(visibleLength(header), ...tableRows.map((row) => visibleLength(row.columns[index] ?? ""))),
+  );
+
+  const separator = buildSeparator(widths);
+  const summaryCount = tableRows.filter((row) => row.hasMissingMeal).length;
+  const lines = [
+    `${ANSI.bold}Tray Orders for ${formatServiceDate(targetDate)}${ANSI.reset}`,
+    separator,
+    buildRow(headers, widths),
+    separator,
+    ...tableRows.map((row) => buildRow(row.columns, widths)),
+    separator,
+    `Patients: ${rows.length} | Missing meal coverage: ${summaryCount}`,
+  ];
+
+  return lines.join("\n");
+}
+
+function formatMealCell(meal: ReportMeal | undefined): string {
+  if (!meal) {
+    return colorize("Missing", ANSI.red);
+  }
+
+  const details = meal.recipeNames.length > 0 ? meal.recipeNames.join(", ") : "Ordered";
+  return colorize(`${details} (${meal.totalCalories} cal)`, ANSI.green);
+}
+
+function buildSeparator(widths: number[]): string {
+  return `+${widths.map((width) => "-".repeat(width + 2)).join("+")}+`;
+}
+
+function buildRow(columns: string[], widths: number[]): string {
+  return `| ${columns
+    .map((column, index) => `${column}${" ".repeat(Math.max(widths[index] - visibleLength(column), 0))}`)
+    .join(" | ")} |`;
+}
+
+function formatServiceDate(targetDate: Date): string {
+  return targetDate.toISOString().slice(0, 10);
+}
+
+function colorize(value: string, color: string): string {
+  return `${color}${value}${ANSI.reset}`;
+}
+
+function visibleLength(value: string): number {
+  return value.replace(/\u001b\[[0-9;]*m/g, "").length;
+}

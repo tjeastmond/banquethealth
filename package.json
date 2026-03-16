@@ -10,6 +10,7 @@
     "format": "prettier --write \"**/*.{js,ts,json}\"",
     "init-db": "npx prisma migrate deploy && npm run reset-db",
     "reset-db": "ts-node scripts/resetDb.ts",
+    "report": "ts-node src/cli/reportEntrypoint.ts",
     "test": "jest --config test/jest.config.js",
     "typecheck": "npx tsc --noEmit",
     "start": "ts-node src/entrypoint.ts"

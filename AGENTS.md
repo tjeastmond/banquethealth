@@ -61,6 +61,7 @@ You're an expert software engineer and SQL expert. You write clean and concise c
 
 ## Verification Commands
 
+- Run `npx prisma generate` any time `prisma/schema.prisma` changes, before running TypeScript entrypoints, tests, or reports.
 - Run `npm run test` to verify the Jest suite against the seeded database reset flow.
 - Run `npm run format` to apply the repo's Prettier formatting before finishing work.
 - Run `npm run typecheck` to verify TypeScript correctness without emitting build output.

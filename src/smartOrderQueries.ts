@@ -13,6 +13,8 @@ export interface FoodOptions {
   beverages: FoodOption[];
 }
 
+export type MealScopedFoodOptions = Record<(typeof SCHEDULED_MEAL_TIMES)[number], FoodOptions>;
+
 export interface TrayOrderWithRecipes {
   id: string;
   mealTime: MealTime;
@@ -122,15 +124,21 @@ export async function getPatientsMissingMealsForDate(targetDate: Date): Promise<
 }
 
 /**
- * Loads the recipes smart ordering can use and groups them by meal component category.
+ * Loads the recipes smart ordering can use for a specific meal and groups them by component category.
  *
+ * @param mealTime Meal slot being planned.
  * @returns {Promise<FoodOptions>} Available entree, side, and beverage options.
  */
-export async function getFoodOptions(): Promise<FoodOptions> {
+export async function getFoodOptions(mealTime: (typeof SCHEDULED_MEAL_TIMES)[number]): Promise<FoodOptions> {
   const rows = await db.recipe.findMany({
     where: {
       category: {
         in: [...FOOD_CATEGORIES],
+      },
+      mealAvailabilities: {
+        some: {
+          mealTime,
+        },
       },
     },
     select: {

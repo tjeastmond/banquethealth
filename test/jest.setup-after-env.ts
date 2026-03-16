@@ -8,3 +8,7 @@ afterEach(async () => {
   // Disconnect from the database
   await db.$disconnect();
 });
+
+afterAll(async () => {
+  await runCommand("npm run reset-db");
+});

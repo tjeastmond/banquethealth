@@ -43,11 +43,12 @@ model Patient {
 }
 
 model Recipe {
-  id               String            @id @default(uuid())
-  name             String
-  category         String          @map("category")
-  calories         Int             @map("calories")
-  trayOrderRecipes TrayOrderRecipe[]
+  id                 String                   @id @default(uuid())
+  name               String
+  category           String                   @map("category")
+  calories           Int                      @map("calories")
+  trayOrderRecipes   TrayOrderRecipe[]
+  mealAvailabilities RecipeMealAvailability[]
 
   @@map("recipes")
 }
@@ -79,4 +80,15 @@ model TrayOrderRecipe {
   trayOrderId String    @map("tray_order_id")
 
     @@map("tray_order_recipes")
+}
+
+model RecipeMealAvailability {
+  id       String   @id @default(uuid())
+  recipe   Recipe   @relation(fields: [recipeId], references: [id])
+  recipeId String   @map("recipe_id")
+  mealTime MealTime @map("meal_time")
+
+  @@unique([recipeId, mealTime])
+  @@index([mealTime])
+  @@map("recipe_meal_availabilities")
 }

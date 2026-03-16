@@ -1,5 +1,5 @@
-import type { FoodOption, FoodOptions } from "./smartOrderQueries";
-import { getFoodOptions } from "./smartOrderQueries";
+import type { FoodOption, FoodOptions, MealScopedFoodOptions } from "./smartOrderQueries";
+import { getFoodOptions, SCHEDULED_MEAL_TIMES } from "./smartOrderQueries";
 import type { ScheduledMealTime } from "./smartOrderPatients";
 
 export interface PatientCalorieGoals {
@@ -43,19 +43,25 @@ interface MealCalorieTarget {
 }
 
 /**
- * Loads meal options and fails fast if any required category is unavailable.
+ * Loads meal options by scheduled meal and fails fast when a meal has no eligible entrees.
  *
- * @returns {Promise<FoodOptions>} Available smart-order recipe options grouped by category.
- * @throws {Error} When any required meal category has no recipes.
+ * @returns {Promise<MealScopedFoodOptions>} Available smart-order recipe options grouped by meal and category.
+ * @throws {Error} When any scheduled meal slot has no entree recipes.
  */
-export async function getSmartOrderFoodOptions(): Promise<FoodOptions> {
-  const options = await getFoodOptions();
+export async function getSmartOrderFoodOptions(): Promise<MealScopedFoodOptions> {
+  const entries = await Promise.all(
+    SCHEDULED_MEAL_TIMES.map(async (mealTime) => {
+      const options = await getFoodOptions(mealTime);
 
-  if (options.entrees.length === 0 || options.sides.length === 0 || options.beverages.length === 0) {
-    throw new Error("Smart order requires entree, side, and beverage options");
-  }
+      if (options.entrees.length === 0) {
+        throw new Error(`Smart order requires at least one entree option for ${mealTime.toLowerCase()}`);
+      }
 
-  return options;
+      return [mealTime, options] as const;
+    }),
+  );
+
+  return Object.fromEntries(entries) as MealScopedFoodOptions;
 }
 
 /**
@@ -65,7 +71,7 @@ export async function getSmartOrderFoodOptions(): Promise<FoodOptions> {
  * @param options Available recipe options grouped by category.
  * @returns {PlannedMealOutcome[]} One planning outcome per missing meal slot.
  */
-export function buildMealsForPatient(input: PatientMealPlanInput, options: FoodOptions): PlannedMealOutcome[] {
+export function buildMealsForPatient(input: PatientMealPlanInput, optionsByMealTime: MealScopedFoodOptions): PlannedMealOutcome[] {
   let scheduledCalories = input.scheduledCalories;
   const plannedMeals: PlannedMealOutcome[] = [];
 
@@ -79,7 +85,7 @@ export function buildMealsForPatient(input: PatientMealPlanInput, options: FoodO
       scheduledCalories,
       remainingMealCount,
     );
-    const meal = selectMealForTarget(mealTime, calorieTarget, options);
+    const meal = selectMealForTarget(mealTime, calorieTarget, optionsByMealTime[mealTime]);
 
     if (!meal) {
       plannedMeals.push({

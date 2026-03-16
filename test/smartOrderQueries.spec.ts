@@ -191,25 +191,35 @@ describe("smartOrderQueries", () => {
     ]);
   });
 
-  it("fails fast when a patient has multiple diet plans", async () => {
-    await db.patientDietOrder.create({
-      data: {
-        id: "50838a6f-0f1d-4879-a333-2aa27a0ee92d",
-        patientId: PATIENT_ID,
-        dietOrderId: LOW_CALORIE_DIET_ID,
-      },
-    });
-
-    await expect(getPatientCalorieRanges([PATIENT_ID])).rejects.toThrow(`Patient ${PATIENT_ID} has multiple diet plans. Expected exactly zero or one diet plan per patient.`);
+  it("enforces one diet plan per patient at the database level", async () => {
+    await expect(
+      db.patientDietOrder.create({
+        data: {
+          id: "50838a6f-0f1d-4879-a333-2aa27a0ee92d",
+          patientId: PATIENT_ID,
+          dietOrderId: LOW_CALORIE_DIET_ID,
+        },
+      }),
+    ).rejects.toThrow(/Unique constraint failed/);
   });
 
-  it("groups food options by supported category only", async () => {
-    const options = await getFoodOptions();
+  it("returns only breakfast-eligible food options for breakfast", async () => {
+    const options = await getFoodOptions(MealTime.BREAKFAST);
 
     expect(options.entrees.length).toBeGreaterThan(0);
-    expect(options.sides.length).toBeGreaterThan(0);
-    expect(options.beverages.length).toBeGreaterThan(0);
+    expect(options.entrees.some((recipe) => recipe.name === "Pancakes")).toBe(true);
+    expect(options.entrees.some((recipe) => recipe.name === "Bacon")).toBe(true);
+    expect(options.entrees.some((recipe) => recipe.name === "Salmon")).toBe(false);
     expect(options.entrees.every((recipe) => recipe.name !== "Chocolate Pudding")).toBe(true);
     expect(options.beverages.some((recipe) => recipe.name === "Water")).toBe(true);
+  });
+
+  it("returns only dinner-eligible food options for dinner", async () => {
+    const options = await getFoodOptions(MealTime.DINNER);
+
+    expect(options.entrees.some((recipe) => recipe.name === "Salmon")).toBe(true);
+    expect(options.entrees.some((recipe) => recipe.name === "Pancakes")).toBe(false);
+    expect(options.sides.some((recipe) => recipe.name === "Mashed Potatoes")).toBe(true);
+    expect(options.beverages.some((recipe) => recipe.name === "Chocolate Ensure")).toBe(true);
   });
 });

@@ -19,7 +19,11 @@ describe("triggerSmartOrderSystem", () => {
         patientId,
       },
       include: {
-        recipes: true,
+        recipes: {
+          include: {
+            recipe: true,
+          },
+        },
       },
       orderBy: {
         scheduledFor: "asc",
@@ -30,7 +34,15 @@ describe("triggerSmartOrderSystem", () => {
     expect(trayOrders.map((order) => order.mealTime)).toEqual([MealTime.BREAKFAST, MealTime.LUNCH, MealTime.DINNER]);
     expect(trayOrders.every((order) => order.mealTime !== MealTime.SNACK)).toBe(true);
     expect(trayOrders.every((order) => order.recipes.length > 0)).toBe(true);
-    expect(summary.mealsCreated).toBe(6);
+    expect(trayOrders[0]?.recipes.some(({ recipe }) => recipe.name === "Salmon")).toBe(false);
+    expect(trayOrders[0]?.recipes.some(({ recipe }) => recipe.name === "Pancakes")).toBe(true);
+    expect(trayOrders[1]?.recipes.some(({ recipe }) => recipe.name === "Pancakes")).toBe(false);
+    expect(trayOrders[2]?.recipes.some(({ recipe }) => recipe.name === "Salmon")).toBe(true);
+    expect(summary.patientResults).toContainEqual({
+      patientId,
+      patientName: "Jeremy Usborne",
+      outcomes: [expect.objectContaining({ status: "planned" }), expect.objectContaining({ status: "planned" }), expect.objectContaining({ status: "planned" })],
+    });
     expect(summary.mealsSkipped).toBe(0);
   });
 
@@ -79,7 +91,8 @@ describe("triggerSmartOrderSystem", () => {
     });
 
     expect(dinnerOrder).not.toBeNull();
-    expect(dinnerOrder!.recipes.reduce((sum, trayOrderRecipe) => sum + trayOrderRecipe.recipe.calories, 0)).toBe(500);
+    expect(dinnerOrder!.recipes.reduce((sum, trayOrderRecipe) => sum + trayOrderRecipe.recipe.calories, 0)).toBe(600);
+    expect(dinnerOrder!.recipes.some((trayOrderRecipe) => trayOrderRecipe.recipe.name === "Salmon")).toBe(true);
     expect(summary.mealsSkipped).toBe(0);
   });
 
@@ -280,6 +293,19 @@ describe("triggerSmartOrderSystem", () => {
 
     expect(patientResult!.outcomes[1].meal.mealTime).toBe(MealTime.DINNER);
     expect(patientResult!.outcomes[1].meal.totalCalories).toBeLessThanOrEqual(450);
+  });
+
+  it("fails fast when a scheduled meal has no eligible entree options", async () => {
+    await db.recipeMealAvailability.deleteMany({
+      where: {
+        mealTime: MealTime.DINNER,
+        recipe: {
+          category: "Entrees",
+        },
+      },
+    });
+
+    await expect(triggerSmartOrderSystem(TARGET_DATE)).rejects.toThrow("Smart order requires at least one entree option for dinner");
   });
 });
 

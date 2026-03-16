@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { getDateBoundaries, SCHEDULED_MEAL_TIMES } from "../smartOrderQueries";
+import { getDateBoundaries, getPatientCalorieRanges, getScheduledCaloriesForDate, SCHEDULED_MEAL_TIMES } from "../smartOrderQueries";
 
 export interface ReportMeal {
   mealTime: (typeof SCHEDULED_MEAL_TIMES)[number];
@@ -11,6 +11,10 @@ export interface PatientTrayOrderReportRow {
   patientId: string;
   patientName: string;
   meals: Partial<Record<(typeof SCHEDULED_MEAL_TIMES)[number], ReportMeal>>;
+  dietPlanName: string | null;
+  minimumCalories: number | null;
+  maximumCalories: number | null;
+  totalPlannedCalories: number;
 }
 
 const MEAL_TIME_LABELS: Record<(typeof SCHEDULED_MEAL_TIMES)[number], string> = {
@@ -32,11 +36,22 @@ const ANSI = {
  */
 export async function getPatientTrayOrderReport(targetDate: Date): Promise<PatientTrayOrderReportRow[]> {
   const { start, end } = getDateBoundaries(targetDate);
-
   const patients = await db.patient.findMany({
     select: {
       id: true,
       name: true,
+      patientDietOrders: {
+        select: {
+          dietOrder: {
+            select: {
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          dietOrderId: "asc",
+        },
+      },
       trayOrders: {
         where: {
           scheduledFor: {
@@ -67,6 +82,9 @@ export async function getPatientTrayOrderReport(targetDate: Date): Promise<Patie
       name: "asc",
     },
   });
+  const patientIds = patients.map((patient) => patient.id);
+  const [calorieRanges, scheduledCaloriesByPatient] = await Promise.all([getPatientCalorieRanges(patientIds), getScheduledCaloriesForDate(targetDate, patientIds)]);
+  const calorieRangeByPatient = new Map(calorieRanges.map((range) => [range.patientId, range]));
 
   return patients.map((patient) => {
     const meals: PatientTrayOrderReportRow["meals"] = {};
@@ -85,10 +103,16 @@ export async function getPatientTrayOrderReport(targetDate: Date): Promise<Patie
       };
     }
 
+    const calorieRange = calorieRangeByPatient.get(patient.id);
+
     return {
       patientId: patient.id,
       patientName: patient.name,
       meals,
+      dietPlanName: patient.patientDietOrders[0]?.dietOrder.name ?? null,
+      minimumCalories: calorieRange?.minimumCalories ?? null,
+      maximumCalories: calorieRange?.maximumCalories ?? null,
+      totalPlannedCalories: scheduledCaloriesByPatient.get(patient.id) ?? 0,
     };
   });
 }
@@ -97,13 +121,20 @@ export async function getPatientTrayOrderReport(targetDate: Date): Promise<Patie
  * Renders a simple ANSI-colored ASCII table for a day's tray orders.
  */
 export function renderPatientTrayOrderReport(rows: PatientTrayOrderReportRow[], targetDate: Date): string {
-  const headers = ["Patient", ...SCHEDULED_MEAL_TIMES.map((mealTime) => MEAL_TIME_LABELS[mealTime])];
+  const headers = ["Patient", ...SCHEDULED_MEAL_TIMES.map((mealTime) => MEAL_TIME_LABELS[mealTime]), "Diet Plan", "Min Calories", "Max Calories", "Planned Calories"];
   const tableRows = rows.map((row) => {
     const hasMissingMeal = SCHEDULED_MEAL_TIMES.some((mealTime) => !row.meals[mealTime]);
 
     return {
       hasMissingMeal,
-      columns: [colorize(row.patientName, hasMissingMeal ? ANSI.yellow : ANSI.bold), ...SCHEDULED_MEAL_TIMES.map((mealTime) => formatMealCell(row.meals[mealTime]))],
+      columns: [
+        colorize(row.patientName, hasMissingMeal ? ANSI.yellow : ANSI.bold),
+        ...SCHEDULED_MEAL_TIMES.map((mealTime) => formatMealCell(row.meals[mealTime])),
+        row.dietPlanName ?? "-",
+        formatCalorieLimitCell(row.minimumCalories),
+        formatCalorieLimitCell(row.maximumCalories),
+        colorize(`${row.totalPlannedCalories} cal`, ANSI.bold),
+      ],
     };
   });
 
@@ -131,6 +162,10 @@ function formatMealCell(meal: ReportMeal | undefined): string {
 
   const details = meal.recipeNames.length > 0 ? meal.recipeNames.join(", ") : "Ordered";
   return colorize(`${details} (${meal.totalCalories} cal)`, ANSI.green);
+}
+
+function formatCalorieLimitCell(calories: number | null): string {
+  return calories === null ? "-" : `${calories} cal`;
 }
 
 function buildSeparator(widths: number[]): string {

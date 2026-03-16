@@ -8,14 +8,7 @@ describe("trayOrderReport", () => {
   it("returns all seeded patients for the target date", async () => {
     const report = await getPatientTrayOrderReport(TARGET_DATE);
 
-    expect(report.map((row) => row.patientName)).toEqual([
-      "Bob Belcher",
-      "Calvin Fischoeder",
-      "Gene Belcher",
-      "Linda Belcher",
-      "Louise Belcher",
-      "Mark Corrigan",
-    ]);
+    expect(report.map((row) => row.patientName)).toEqual(["Bob Belcher", "Calvin Fischoeder", "Gene Belcher", "Linda Belcher", "Louise Belcher", "Mark Corrigan"]);
   });
 
   it("returns the expected meal coverage while ignoring snacks", async () => {
@@ -25,6 +18,10 @@ describe("trayOrderReport", () => {
       {
         patientId: "18ed16cd-39ee-4b41-92f1-460719c21dbc",
         patientName: "Bob Belcher",
+        dietPlanName: "Regular",
+        minimumCalories: 1500,
+        maximumCalories: 2500,
+        totalPlannedCalories: 850,
         meals: {
           DINNER: {
             mealTime: MealTime.DINNER,
@@ -36,6 +33,10 @@ describe("trayOrderReport", () => {
       {
         patientId: "3534c978-ef72-4927-bf4c-a8f83ec2062c",
         patientName: "Calvin Fischoeder",
+        dietPlanName: "Regular",
+        minimumCalories: 1500,
+        maximumCalories: 2500,
+        totalPlannedCalories: 1600,
         meals: {
           BREAKFAST: {
             mealTime: MealTime.BREAKFAST,
@@ -57,6 +58,10 @@ describe("trayOrderReport", () => {
       {
         patientId: "9aeabca1-b55d-49db-b406-7d252d262a57",
         patientName: "Gene Belcher",
+        dietPlanName: "Low Calorie",
+        minimumCalories: 1000,
+        maximumCalories: 1500,
+        totalPlannedCalories: 1000,
         meals: {
           BREAKFAST: {
             mealTime: MealTime.BREAKFAST,
@@ -73,6 +78,10 @@ describe("trayOrderReport", () => {
       {
         patientId: "5d70767f-c7fe-44a2-a1ea-baa8dfbd2140",
         patientName: "Linda Belcher",
+        dietPlanName: "High Calorie",
+        minimumCalories: 2000,
+        maximumCalories: 2500,
+        totalPlannedCalories: 600,
         meals: {
           DINNER: {
             mealTime: MealTime.DINNER,
@@ -84,6 +93,10 @@ describe("trayOrderReport", () => {
       {
         patientId: "3590aaf3-9521-4986-84cb-a33ba42bd76e",
         patientName: "Louise Belcher",
+        dietPlanName: "High Calorie",
+        minimumCalories: 2000,
+        maximumCalories: 2500,
+        totalPlannedCalories: 500,
         meals: {
           LUNCH: {
             mealTime: MealTime.LUNCH,
@@ -95,6 +108,10 @@ describe("trayOrderReport", () => {
       {
         patientId: "7ea4e6ec-f359-485b-ac99-e0b44c3e18b9",
         patientName: "Mark Corrigan",
+        dietPlanName: "Regular",
+        minimumCalories: 1500,
+        maximumCalories: 2500,
+        totalPlannedCalories: 1000,
         meals: {
           BREAKFAST: {
             mealTime: MealTime.BREAKFAST,
@@ -122,8 +139,15 @@ describe("trayOrderReport", () => {
     expect(rendered).toContain("Breakfast");
     expect(rendered).toContain("Lunch");
     expect(rendered).toContain("Dinner");
+    expect(rendered).toContain("Diet Plan");
+    expect(rendered).toContain("Min Calories");
+    expect(rendered).toContain("Max Calories");
+    expect(rendered).toContain("Planned Calories");
     expect(rendered).toContain("Missing");
     expect(rendered).toContain("Salmon, Mixed Veggies (650 cal)");
+    expect(rendered).toContain("High Calorie");
+    expect(rendered).toContain("1500 cal");
+    expect(rendered).toContain("850 cal");
     expect(rendered).toContain("Patients: 6 | Missing meal coverage: 5");
   });
 

@@ -52,10 +52,16 @@ You're an expert software engineer and SQL expert. You write clean and concise c
 | `npm run db-down`  | Stop the Postgres container                 |
 | `npm run db-clean` | Stop Postgres and remove persistent volumes |
 | `npm run init-db`  | Initialize and seed the database            |
-| `npm run reset-db` | Reset database to base state                |
-| `npm run save-db`  | Save a database snapshot                    |
+| `npm run reset-db` | Truncate seeded tables and reseed from CSV  |
 | `npm run test`     | Run the test suite                          |
+| `npm run typecheck`| Run the TypeScript compiler without emit    |
 | `npm start`        | Run the smart ordering entrypoint script    |
+
+## Verification Commands
+
+- Run `npm run test` to verify the Jest suite against the seeded database reset flow.
+- Run `npm run format` to apply the repo's Prettier formatting before finishing work.
+- Run `npm run typecheck` to verify TypeScript correctness without emitting build output.
 
 ## Database Connection
 
@@ -78,8 +84,15 @@ case-challenge/
 │   └── entrypoint.ts       # Script entrypoint
 ├── test/
 │   └── *.spec.ts           # Test specs
-└── scripts/                # DB snapshot utilities
+└── scripts/                # DB reset utilities
 ```
+
+## Test Database Lifecycle
+
+- `npm run reset-db` is the canonical reset path for local development and tests.
+- The reset script truncates seeded tables and reloads data from the CSV files in `prisma/seed/rawData`.
+- `npm run test` uses that same CSV reseed flow before each test.
+- Do not add snapshot generation or tracked snapshot artifacts back into the automated test setup.
 
 ## Adding Seed Patients
 

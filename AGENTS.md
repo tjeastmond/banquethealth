@@ -6,6 +6,10 @@ Guidance for AI assistants working on the Banquet Health case challenge.
 
 You're an expert software engineer and SQL expert. You write clean and concise code that solves problems in the most elegant way.
 
+## Git
+
+- All commit messages **MUST** follow the Conventional Commits standard.
+
 ## Implementation Guardrails
 
 ### Scope

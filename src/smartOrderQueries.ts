@@ -246,7 +246,7 @@ export async function getScheduledCaloriesForDate(targetDate: Date, patientIds: 
 }
 
 /**
- * Fetches each patient's calorie range from their active diet order, if present.
+ * Fetches each patient's calorie range from their diet order, if present.
  *
  * @param patientIds Patients to resolve calorie constraints for.
  * @returns {Promise<PatientCalorieRange[]>} Minimum and maximum daily calorie limits by patient.

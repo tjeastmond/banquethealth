@@ -148,7 +148,7 @@ describe("trayOrderReport", () => {
     expect(rendered).toContain("High Calorie");
     expect(rendered).toContain("1500 cal");
     expect(rendered).toContain("850 cal");
-    expect(rendered).toContain("Patients: 6 | Missing meal coverage: 5");
+    expect(rendered).toContain("Patients: 6 | Missing meal coverage: 8");
   });
 
   it("does not treat snacks as meal coverage", async () => {

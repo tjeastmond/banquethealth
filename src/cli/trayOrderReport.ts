@@ -138,7 +138,7 @@ export function renderPatientTrayOrderReport(rows: PatientTrayOrderReportRow[], 
   const widths = headers.map((header, index) => Math.max(visibleLength(header), ...tableRows.map((row) => visibleLength(row.columns[index] ?? ""))));
 
   const separator = buildSeparator(widths);
-  const summaryCount = tableRows.filter((row) => row.hasMissingMeal).length;
+  const summaryCount = rows.reduce((count, row) => count + SCHEDULED_MEAL_TIMES.filter((mealTime) => !row.meals[mealTime]).length, 0);
   const lines = [
     `${ANSI.bold}Tray Orders for ${formatServiceDate(targetDate)}${ANSI.reset}`,
     separator,

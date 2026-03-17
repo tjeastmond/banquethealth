@@ -1,1 +1,0 @@
-- [ ] `npm run test` fails when local Postgres is not running at `localhost:5442`; ensure `npm run db-up` is run before tests.

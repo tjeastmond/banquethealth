@@ -1,14 +1,16 @@
-import { runCommand } from "../scripts/utils";
+import { resetDb } from "../scripts/resetDb";
 import { db } from "../src/db";
-beforeEach(async () => {
-  await runCommand("npm run reset-db");
+
+beforeAll(() => {
+  jest.spyOn(console, "info").mockImplementation(() => undefined);
+  jest.spyOn(console, "log").mockImplementation(() => undefined);
 });
 
-afterEach(async () => {
-  // Disconnect from the database
-  await db.$disconnect();
+beforeEach(async () => {
+  await resetDb();
 });
 
 afterAll(async () => {
-  await runCommand("npm run reset-db");
+  await resetDb();
+  await db.$disconnect();
 });

@@ -4,11 +4,41 @@ import { tables } from "./config";
 import { parseCsv } from "./utils/parse";
 import { getColumnTypes, seedManualTable } from "./utils/db";
 
+type SeedRow = Record<string, unknown>;
+
+const columnTypesCache = new Map<string, Promise<Record<string, string>>>();
+const seedDataCache = new Map<string, Promise<SeedRow[]>>();
+
+const getCachedColumnTypes = (tableName: string) => {
+  const cached = columnTypesCache.get(tableName);
+  if (cached) {
+    return cached;
+  }
+
+  const next = getColumnTypes(tableName);
+  columnTypesCache.set(tableName, next);
+  return next;
+};
+
+const getCachedSeedData = (tableName: string) => {
+  const cached = seedDataCache.get(tableName);
+  if (cached) {
+    return cached;
+  }
+
+  const next = (async () => {
+    const filePath = join(__dirname, "rawData", `./${tableName}.csv`);
+    const columnTypes = await getCachedColumnTypes(tableName);
+    return parseCsv(filePath, columnTypes);
+  })();
+
+  seedDataCache.set(tableName, next);
+  return next;
+};
+
 export async function seedDatabase() {
   for (const tableName of tables) {
-    const filePath = join(__dirname, "rawData", `./${tableName}.csv`);
-    const columnTypes = await getColumnTypes(tableName);
-    const rawData = await parseCsv(filePath, columnTypes);
+    const rawData = await getCachedSeedData(tableName);
     if (rawData.length === 0) {
       continue;
     }

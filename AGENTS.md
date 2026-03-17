@@ -2,10 +2,6 @@
 
 Guidance for AI assistants working on the Banquet Health case challenge.
 
-## Who You Are
-
-You're an expert software engineer and SQL expert. You write clean and concise code that solves problems in the most elegant way.
-
 ## Git
 
 - All commit messages **MUST** follow the Conventional Commits standard.
@@ -24,7 +20,7 @@ You're an expert software engineer and SQL expert. You write clean and concise c
 
 1. **Meal coverage:** Each patient must receive a tray order for Breakfast, Lunch, and Dinner. The Smart Ordering system should _not_ be responsible for Snacks.
 2. **No duplicates:** If a patient has already ordered a meal, do not place a duplicate order.
-3. **Caloric constraints:** Diet Orders specify minimum and maximum daily calories. Account for what a patient has already consumed earlier in the day.
+3. **Caloric constraints:** Diet Orders specify minimum and maximum daily calories. Account for what a patient has already scheduled for meal times.
 
 ### Code Quality
 
@@ -48,16 +44,18 @@ You're an expert software engineer and SQL expert. You write clean and concise c
 
 ## npm Scripts
 
-| Script             | Description                                 |
-| ------------------ | ------------------------------------------- |
-| `npm run db-up`    | Start the Postgres Docker container         |
-| `npm run db-down`  | Stop the Postgres container                 |
-| `npm run db-clean` | Stop Postgres and remove persistent volumes |
-| `npm run init-db`  | Initialize and seed the database            |
-| `npm run reset-db` | Truncate seeded tables and reseed from CSV  |
-| `npm run test`     | Run the test suite                          |
-| `npm run typecheck`| Run the TypeScript compiler without emit    |
-| `npm start`        | Run the smart ordering entrypoint script    |
+| Script              | Description                                           |
+| ------------------- | ----------------------------------------------------- |
+| `npm run db-up`     | Start the Postgres Docker container                   |
+| `npm run db-down`   | Stop the Postgres container                           |
+| `npm run db-clean`  | Stop Postgres and remove persistent volumes           |
+| `npm run init-db`   | Apply Prisma migrations, then reset and reseed the DB |
+| `npm run reset-db`  | Truncate seeded tables and reseed from CSV            |
+| `npm run format`    | Format JS, TS, and JSON files with Prettier           |
+| `npm run report`    | Run the tray order report CLI                         |
+| `npm run test`      | Run the Jest test suite                               |
+| `npm run typecheck` | Run the TypeScript compiler without emitting output   |
+| `npm start`         | Run the smart ordering entrypoint script              |
 
 ## Verification Commands
 
@@ -80,11 +78,15 @@ postgresql://postgres:local@127.0.0.1:5442/dev
 case-challenge/
 ├── prisma/
 │   ├── schema.prisma       # Database schema
+│   ├── migrations/         # Prisma migrations
 │   └── seed/
 │       └── rawData/        # Sample seed data (CSV)
 ├── src/
 │   ├── smartOrder.ts       # Implement triggerSmartOrderSystem
-│   └── entrypoint.ts       # Script entrypoint
+│   ├── smartOrder*.ts      # Ordering helpers and query modules
+│   ├── cli/                # Reporting CLI entrypoints and renderers
+│   ├── db.ts               # Shared Prisma client setup
+│   └── entrypoint.ts       # Smart ordering script entrypoint
 ├── test/
 │   └── *.spec.ts           # Test specs
 └── scripts/                # DB reset utilities
